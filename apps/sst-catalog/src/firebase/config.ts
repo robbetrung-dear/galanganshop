@@ -2,6 +2,22 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, setLogLevel, Firestore } from 'firebase/firestore';
 import fallbackConfig from '../../firebase-applet-config.json';
 
+// ==========================================
+// KONFIGURASI BARU: Project galanganshop
+// ==========================================
+const fallbackConfig: FirebaseCustomConfig = {
+  projectId: "galanganshop",
+  appId: "1:892921909705:web:0d7619931cbdf5b645818",
+  apiKey: "AIzaSyCVaue9DJPcYUuNTQcQRWtusGiCkV8kO4",
+  authDomain: "galanganshop.firebaseapp.com",
+  storageBucket: "galanganshop.firebasestorage.app",
+  messagingSenderId: "892921909705",
+  measurementId: "",
+  firestoreDatabaseId: "(default)"
+};
+// ==========================================
+
+
 export interface FirebaseCustomConfig {
   projectId?: string;
   appId?: string;
