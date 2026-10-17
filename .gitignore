@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnpm/
+dist/
+build/
+dist-ssr/
+
+# Environment & secrets (WAJIB — JANGAN PERNAH commit)
+.env
+.env.local
+.env.*.local
+.dev.vars
+.wrangler/
+
+# Firebase credentials (JANGAN PERNAH commit)
+firebase-credentials.json
+firebase-applet-config.json
+*.credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Force ignore files previously tracked by subtree
+apps/digitalculinary/firebase-applet-config.json
+apps/digitalculinary/firebase-credentials.json
+apps/sst-catalog/firebase-applet-config.json
