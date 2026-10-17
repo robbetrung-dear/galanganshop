@@ -420,7 +420,7 @@
               throw new Error('Gagal membaca respon server. Periksa koneksi jaringan.');
             }
 
-            if (!response.ok || !data.success) {
+            if (!response.ok) {
               // Kalau gagal: tampilkan errorMessage
               this.errorMessage = data.error || 'Username atau PIN kasir salah. Silakan coba lagi.';
               this.loading = false;
