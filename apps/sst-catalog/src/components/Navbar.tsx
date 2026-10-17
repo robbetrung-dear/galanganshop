@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Menu, X, Shield, PhoneCall, Search, Layers, BookOpen, Building2, HelpCircle } from 'lucide-react';
+import { ShoppingCart, Menu, X, Shield, Lock, PhoneCall, Search, Layers, BookOpen, Building2, HelpCircle } from 'lucide-react';
 import { useCatalog } from '../context/CatalogContext';
 
 export const Navbar: React.FC = () => {
@@ -147,6 +147,19 @@ export const Navbar: React.FC = () => {
             >
               <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
+
+            {/* FASE 4: Login Staff — link ke POS/Kasir (domain terpisah) */}
+            <a
+              id="nav-staff-login-btn"
+              href="https://kasir-galanganshop.pages.dev/login-gate.html"
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 sm:p-2.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors flex items-center gap-1.5 text-sm font-medium"
+              title="Login Staff (POS / Kasir)"
+            >
+              <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden md:inline">Login Staff</span>
+            </a>
 
             {/* Mobile Menu Toggle */}
             <button
