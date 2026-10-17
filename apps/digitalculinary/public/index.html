@@ -19,15 +19,15 @@
       if (event.stopImmediatePropagation) event.stopImmediatePropagation();
     });
   </script>
-  <title>Dapur Kuliner Viral & Catering Rumahan | Dari Dapur Kami, Viral di Meja Anda</title>
+  <title>Galangan Shop - Toko Bangunan & Material | Dari Gudang ke Tempat Anda</title>
   
   <!-- SEO Meta Tags -->
   <meta name="description" content="Pesan menu viral (Rice Bowl Katsu, Chicken Wings, Aneka Mie, Dimsum, Seblak) & Catering Harian / Acara (Silver, Gold, Platinum). Real-time tracking & cek ongkir 7 kurir instan." />
   <meta name="keywords" content="catering murah, rice bowl katsu, menu viral, seblak prasmanan, chicken egg roll, catering kantor, catering jakarta" />
-  <meta name="author" content="Dapur Kuliner Viral" />
+  <meta name="author" content="Galangan Shop" />
 
   <!-- OpenGraph Social Cards -->
-  <meta property="og:title" content="Dapur Kuliner Viral & Catering Rumahan" />
+  <meta property="og:title" content="Galangan Shop - Toko Bangunan & Material" />
   <meta property="og:description" content="Pesan aneka rice bowl viral, chicken wings, bento, & paket catering mulai Rp25.000/pax. Cek ongkir instan & bayar via QRIS/VA." />
   <meta property="og:image" content="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&auto=format&fit=crop&q=80" />
   <meta property="og:type" content="restaurant" />
@@ -38,7 +38,7 @@
   {
     "@context": "https://schema.org",
     "@type": "FoodEstablishment",
-    "name": "Dapur Kuliner Viral & Catering",
+    "name": "Galangan Shop - Toko Bangunan & Material",
     "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
     "priceRange": "Rp7.000 - Rp78.000",
     "servesCuisine": "Indonesian, Japanese Fusion, Street Food",
@@ -76,12 +76,12 @@
         extend: {
           colors: {
             brand: {
-              50: '#fff7ed',
-              100: '#ffedd5',
-              500: '#f97316',
-              600: '#ea580c',
-              700: '#c2410c',
-              900: '#7c2d12',
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              900: '#0c4a6e',
             },
             accent: {
               500: '#10b981',
@@ -139,7 +139,7 @@
             const cfg = JSON.parse(raw);
             if (cfg && typeof cfg === 'object') {
               return {
-                brandName: String(cfg.brandName || 'DIGITAL CULINARY').trim(),
+                brandName: String(cfg.brandName || 'GALANGAN SHOP').trim(),
                 logoBgColor: String(cfg.logoBgColor || '#ea580c').trim(),
                 logoImage: (cfg.logoImage && String(cfg.logoImage).trim().length > 10)
                   ? String(cfg.logoImage).trim() : ''
@@ -148,7 +148,7 @@
           }
         } catch(e) { /* retry */ }
       }
-      return { brandName: 'DIGITAL CULINARY', logoBgColor: '#ea580c', logoImage: '' };
+      return { brandName: 'GALANGAN SHOP', logoBgColor: '#0ea5e9', logoImage: '' };
     })();
 
     // Preload image paralel dengan body parse
@@ -258,7 +258,7 @@
     </div>
     <h1 id="splashTitleStatic"
         style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:900; color:#fff; font-size:1.75rem; letter-spacing:-0.025em; text-transform:uppercase; text-align:center; padding:0 24px; margin:0;">
-      DIGITAL CULINARY
+      GALANGAN SHOP
     </h1>
   </div>
   <script>
@@ -1768,7 +1768,7 @@
 
         <!-- Nama Merchant & NMID -->
         <div class="mt-3 text-center">
-          <h4 class="font-extrabold text-xs text-stone-900 uppercase" x-text="siteConfig.paymentConfig.qrisMerchantName || 'DAPUR KULINER VIRAL - QRIS RESMI'"></h4>
+          <h4 class="font-extrabold text-xs text-stone-900 uppercase" x-text="siteConfig.paymentConfig.qrisMerchantName || 'GALANGAN SHOP - QRIS RESMI'"></h4>
           <p class="text-[10px] font-mono text-stone-400 mt-0.5" x-text="'NMID: ' + (siteConfig.paymentConfig.qrisNmid || 'ID1020023456789')"></p>
         </div>
       </div>
@@ -1859,7 +1859,7 @@
 
         <div>
           <span class="text-[10px] uppercase font-bold text-stone-400 block">Atas Nama Rekening</span>
-          <span class="text-xs font-extrabold text-stone-800 uppercase" x-text="siteConfig.paymentConfig.bankAccountHolder || 'DAPUR KULINER VIRAL'"></span>
+          <span class="text-xs font-extrabold text-stone-800 uppercase" x-text="siteConfig.paymentConfig.bankAccountHolder || 'GALANGAN SHOP'"></span>
         </div>
       </div>
 
@@ -2400,7 +2400,7 @@
           </div>
           <h2 class="text-2xl font-extrabold text-stone-900 tracking-tight">Pilih Akses</h2>
           <p class="text-xs text-stone-500 mt-1 max-w-xs mx-auto">
-            Silakan pilih pintu masuk portal sesuai peran operasional Anda di <span class="font-bold text-stone-700">Dapur Kuliner Viral</span>.
+            Silakan pilih pintu masuk portal sesuai peran operasional Anda di <span class="font-bold text-stone-700">Galangan Shop</span>.
           </p>
         </div>
 
@@ -4064,7 +4064,7 @@
               </div>
               <div>
                 <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Nama Toko di QRIS Dinamis</label>
-                <input type="text" x-model="siteConfig.paymentConfig.qrisMerchantName" placeholder="Contoh: DAPUR KULINER VIRAL" class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold" />
+                <input type="text" x-model="siteConfig.paymentConfig.qrisMerchantName" placeholder="Contoh: GALANGAN SHOP" class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold" />
               </div>
             </div>
 
@@ -4113,7 +4113,7 @@
               </div>
               <div class="space-y-1 text-center sm:text-left flex-1">
                 <span class="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Live Preview QRIS Toko</span>
-                <h6 class="text-xs font-extrabold text-stone-900 mt-1" x-text="siteConfig.paymentConfig.qrisMerchantName || 'DAPUR KULINER VIRAL'"></h6>
+                <h6 class="text-xs font-extrabold text-stone-900 mt-1" x-text="siteConfig.paymentConfig.qrisMerchantName || 'GALANGAN SHOP'"></h6>
                 <p class="text-[11px] text-stone-500 font-mono" x-text="'NMID: ' + (siteConfig.paymentConfig.qrisNmid || '-')"></p>
                 <p class="text-[11px] text-stone-600 italic" x-text="siteConfig.paymentConfig.qrisInstructions"></p>
               </div>
@@ -4143,7 +4143,7 @@
               </div>
               <div>
                 <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Atas Nama Rekening</label>
-                <input type="text" x-model="siteConfig.paymentConfig.bankAccountHolder" placeholder="Contoh: DAPUR KULINER VIRAL" class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold" />
+                <input type="text" x-model="siteConfig.paymentConfig.bankAccountHolder" placeholder="Contoh: GALANGAN SHOP" class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold" />
               </div>
             </div>
 
@@ -4325,7 +4325,7 @@
               <i class="fa-brands fa-cloudflare text-orange-500 text-base"></i>
               <span>Panduan Lengkap Deployment ke Cloudflare Pages</span>
             </h4>
-            <p class="text-xs text-stone-600 mt-0.5">Langkah demi langkah menyebarkan website Dapur Kuliner Viral ke Cloudflare Pages dengan CDN gratis global, SSL otomatis, dan serverless functions.</p>
+            <p class="text-xs text-stone-600 mt-0.5">Langkah demi langkah menyebarkan website Galangan Shop ke Cloudflare Pages dengan CDN gratis global, SSL otomatis, dan serverless functions.</p>
           </div>
 
           <!-- Langkah 1: Push ke GitHub -->
@@ -4346,7 +4346,7 @@
             <p class="text-xs text-stone-500">Jalankan perintah ini di terminal proyek Anda untuk menyimpan kode ke akun GitHub:</p>
             <pre class="bg-stone-900 text-stone-100 p-3.5 rounded-xl text-xs font-mono overflow-x-auto leading-relaxed">git init
 git add .
-git commit -m "feat: deploy dapur kuliner viral"
+git commit -m "feat: deploy galangan shop"
 git branch -M main
 git remote add origin https://github.com/USERNAME/NAMA-REPO-ANDA.git
 git push -u origin main</pre>
@@ -4537,7 +4537,7 @@ git push -u origin main</pre>
                 <input 
                   type="text" 
                   x-model="siteConfig.kasirSubtitle" 
-                  placeholder="Dapur Kuliner Viral" 
+                  placeholder="Galangan Shop" 
                   class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold" 
                 />
                 <p class="text-[10px] text-stone-500 mt-1">Tampil di bawah judul utama</p>
@@ -4554,7 +4554,7 @@ git push -u origin main</pre>
                   <span class="font-extrabold text-base tracking-tight text-stone-900" x-text="siteConfig.kasirTitle || 'Kasir Pintar'"></span>
                   <span class="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase">POS</span>
                 </div>
-                <p class="text-[11px] text-stone-500" x-text="siteConfig.kasirSubtitle || 'Dapur Kuliner Viral'"></p>
+                <p class="text-[11px] text-stone-500" x-text="siteConfig.kasirSubtitle || 'Galangan Shop'"></p>
               </div>
             </div>
 
@@ -5753,7 +5753,7 @@ git push -u origin main</pre>
           await set(testRef, {
             pingAt: new Date().toISOString(),
             status: "OK",
-            client: "Admin CMS Dapur Kuliner Viral"
+            client: "Admin CMS Galangan Shop"
           });
           return { success: true, message: "Koneksi Realtime Database BERHASIL! Sinkronisasi multi-device aktif." };
         } catch (err) {
@@ -6008,7 +6008,7 @@ git push -u origin main</pre>
     function dapurApp() {
       return {
         appReady: false,
-        splashBrandName: 'DIGITAL CULINARY',
+        splashBrandName: 'GALANGAN SHOP',
         splashLogoImage: '',
         splashLogoBg: '#ea580c',
         splashLogoIcon: 'fa-solid fa-utensils',
@@ -6030,7 +6030,7 @@ git push -u origin main</pre>
 
         // PENGATURAN TAMPILAN, KONTEN & BRANDING (EDITABLE DI ADMIN)
         siteConfig: {
-          brandName: 'DAPUR KULINER VIRAL',
+          brandName: 'GALANGAN SHOP',
           brandWords: [
             { text: 'DAPUR', color: '#ea580c' },
             { text: 'KULINER', color: '#f59e0b' },
@@ -6105,7 +6105,7 @@ git push -u origin main</pre>
 
           // ✅ TAMBAHKAN INI
           kasirTitle: 'Kasir Pintar',
-          kasirSubtitle: 'Dapur Kuliner Viral',
+          kasirSubtitle: 'Galangan Shop',
                     supervisorPin: '211211',
                     ownerWaNumbers: ['', '', '', '', ''],
           
@@ -6115,13 +6115,13 @@ git push -u origin main</pre>
             enableQris: true,
             qrisType: 'both', // 'both' | 'static' | 'dynamic'
             qrisImage: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=00020101021126570014ID.LINKAJA.WWW01189360091100223126830208123456780303UMI51440014ID.CO.QRIS.WWW0215ID10200234567890303UMI5204581253033605802ID5919DAPUR+KULINER+VIRAL6007JAKARTA61051219062070703A016304ABCD',
-            qrisMerchantName: 'DAPUR KULINER VIRAL - QRIS RESMI',
+            qrisMerchantName: 'GALANGAN SHOP - QRIS RESMI',
             qrisNmid: 'ID1020023456789',
             qrisInstructions: 'Buka BCA Mobile / GoPay / OVO / DANA / ShopeePay / Livin, scan QRIS dan lakukan pembayaran sesuai nominal yang tertera.',
             enableBankTransfer: true,
             bankName: 'BCA (Bank Central Asia)',
             bankAccountNumber: '8735-0982-11',
-            bankAccountHolder: 'DAPUR KULINER VIRAL',
+            bankAccountHolder: 'GALANGAN SHOP',
             bankInstructions: 'Transfer nominal tepat sesuai total pesanan. Simpan struk dan konfirmasi ke WhatsApp admin.',
             ewalletPhone: '0812-3456-7890',
             ewalletInstructions: 'Transfer menggunakan DANA, ShopeePay, GoPay, OVO, atau LinkAja ke nomor tertera. Simpan bukti transfer dan konfirmasi ke WhatsApp admin.'
@@ -6402,7 +6402,7 @@ git push -u origin main</pre>
             return this.siteConfig.brandWords;
           }
           const defaultColors = ['#ea580c', '#f59e0b', '#e11d48', '#10b981', '#6366f1'];
-          const words = (this.siteConfig.brandName || 'DAPUR KULINER VIRAL').trim().split(/\s+/);
+          const words = (this.siteConfig.brandName || 'GALANGAN SHOP').trim().split(/\s+/);
           return words.map((w, idx) => ({
             text: w,
             color: defaultColors[idx % defaultColors.length]
@@ -6411,7 +6411,7 @@ git push -u origin main</pre>
 
         syncBrandWordsFromTitle() {
           const defaultColors = ['#ea580c', '#f59e0b', '#e11d48', '#10b981', '#6366f1', '#8b5cf6'];
-          const words = (this.siteConfig.brandName || 'DAPUR KULINER VIRAL').trim().split(/\s+/);
+          const words = (this.siteConfig.brandName || 'GALANGAN SHOP').trim().split(/\s+/);
           this.siteConfig.brandWords = words.map((w, idx) => {
             const existing = (this.siteConfig.brandWords || [])[idx];
             return {
@@ -7979,7 +7979,7 @@ git push -u origin main</pre>
 
         // Salin Perintah Git Deploy Cloudflare Pages
         copyGitDeployCommands() {
-          const cmds = 'git init\ngit add .\ngit commit -m "feat: deploy dapur kuliner viral"\ngit branch -M main\ngit remote add origin https://github.com/USERNAME/REPO.git\ngit push -u origin main';
+          const cmds = 'git init\ngit add .\ngit commit -m "feat: deploy galangan shop"\ngit branch -M main\ngit remote add origin https://github.com/USERNAME/REPO.git\ngit push -u origin main';
           this.copyToClipboard(cmds, 'Perintah Git berhasil disalin!');
         },
 
@@ -8047,7 +8047,7 @@ git push -u origin main</pre>
         // UNDUH FILE firebase-config.js
         downloadFirebaseConfigJs() {
           const cfg = this.firebaseConfigInput.apiKey ? this.firebaseConfigInput : (window.FirebaseBridge ? window.FirebaseBridge.getConfig() : {});
-          const jsContent = `// firebase-config.js\n// Di-generate otomatis dari Panel Admin Dapur Kuliner Viral\n\nexport const firebaseConfig = ${JSON.stringify(cfg, null, 2)};\n\nexport const IS_DEMO_MODE = !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_FIREBASE");\n`;
+          const jsContent = `// firebase-config.js\n// Di-generate otomatis dari Panel Admin Galangan Shop\n\nexport const firebaseConfig = ${JSON.stringify(cfg, null, 2)};\n\nexport const IS_DEMO_MODE = !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_FIREBASE");\n`;
           const blob = new Blob([jsContent], { type: "application/javascript" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -8090,7 +8090,7 @@ git push -u origin main</pre>
             const { jsPDF } = window.jspdf;
 
             // FASE 5: nama outlet untuk footer struk (siteConfig.brandName, tanpa uppercase)
-            const brandNameRaw = String(this.siteConfig.brandName || "Dapur Kuliner Viral").trim();
+            const brandNameRaw = String(this.siteConfig.brandName || "Galangan Shop").trim();
 
             // Hitung tinggi halaman dinamis berdasarkan jumlah items + footer (wrap-aware)
             const itemCount = (order.items || []).length;
@@ -8107,7 +8107,7 @@ git push -u origin main</pre>
             // === HEADER: Brand ===
             doc.setFont("courier", "bold");
             doc.setFontSize(11);
-            const brandName = String(this.siteConfig.brandName || "DAPUR KULINER VIRAL").toUpperCase();
+            const brandName = String(this.siteConfig.brandName || "GALANGAN SHOP").toUpperCase();
             const brandLines = doc.splitTextToSize(brandName, 72);
             brandLines.forEach(line => {
               doc.text(line, 40, y, { align: "center" });
@@ -8357,7 +8357,7 @@ git push -u origin main</pre>
             doc.text("FORMULIR PESANAN CATERING B2B", 105, 20, { align: "center" });
 
             doc.setFontSize(14);
-            doc.text(this.siteConfig.brandName || "DAPUR KULINER VIRAL", 105, 28, { align: "center" });
+            doc.text(this.siteConfig.brandName || "GALANGAN SHOP", 105, 28, { align: "center" });
             
             doc.setLineWidth(0.5);
             doc.line(20, 32, 190, 32);
