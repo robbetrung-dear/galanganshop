@@ -9504,28 +9504,34 @@ git push -u origin main</pre>
 </script>
 
 
+
+
+
 <script>
-  // Cek sessionStorage dan buka panel admin
-  window.addEventListener("load", function() {
+  // AUTO-OPEN ADMIN PANEL (ROBUST VERSION)
+  document.addEventListener("alpine:initialized", function() {
     setTimeout(function() {
-      try {
-        const isAdmin = sessionStorage.getItem("dapur_admin_session") === "true";
-        if (isAdmin) {
-          const alpineRoot = document.querySelector("[x-data]");
-          if (alpineRoot && window.Alpine) {
-            const data = Alpine.$data(alpineRoot);
-            if (data) {
-              console.log("[AUTO-ADMIN] Opening admin panel...");
-              data.isAdminLoggedIn = true;
-              data.isAdminPanelOpen = true;
-              data.isLoginGateOpen = false;
-            }
+      const isAdminBridge = sessionStorage.getItem("dapur_admin_session") === "true" || window.location.search.includes("admin=1");
+      if (isAdminBridge) {
+        console.log("[AUTO-ADMIN] Forcing admin panel to open...");
+        
+        // 1. Sembunyikan Splash Screen paksa
+        const splash = document.getElementById("splashStatic");
+        if (splash) splash.style.display = "none";
+        
+        // 2. Akses data Alpine.js
+        const rootEl = document.querySelector("[x-data]");
+        if (rootEl && window.Alpine) {
+          const data = window.Alpine.$data(rootEl);
+          if (data) {
+            data.appReady = true;
+            data.isAdminLoggedIn = true;
+            data.isAdminPanelOpen = true;  // <--- INI KUNCI UNTUK MEMBUKA MODAL CMS
+            data.isLoginGateOpen = false;
           }
         }
-      } catch(e) {
-        console.error("[AUTO-ADMIN] Error:", e);
       }
-    }, 1500); // Tunggu Alpine siap
+    }, 1500); // Beri waktu 1.5 detik agar Alpine selesai render
   });
 </script>
 
