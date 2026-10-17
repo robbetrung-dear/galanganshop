@@ -8721,7 +8721,7 @@ git push -u origin main</pre>
             this.isAdminLoggedIn = false;
             try { sessionStorage.removeItem("dapur_admin_session"); } catch (e) {}
 
-            /* window.location.href = '/kasir'; */
+            /* /* window.location.href = '/kasir'; */ */
             return;
           }
 
@@ -8765,7 +8765,7 @@ git push -u origin main</pre>
             this.isAdminLoggedIn = false;
             try { sessionStorage.removeItem("dapur_admin_session"); } catch (e) {}
 
-            /* window.location.href = '/kasir'; */
+            /* /* window.location.href = '/kasir'; */ */
           } catch (err) {
             console.error('Kasir login error:', err);
             this.kasirErrorMessage = 'Gagal memproses otentikasi login. Silakan periksa koneksi Anda.';
