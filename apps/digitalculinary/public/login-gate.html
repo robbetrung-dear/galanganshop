@@ -372,18 +372,15 @@
           }
         },
 
-        async submitKasirLogin() {
+                async submitKasirLogin() {
           this.errorMessage = '';
-
-          // 1. Validasi: username tidak kosong
           const cleanUser = (this.username || '').trim();
+          const cleanPin = (this.pin || '').trim();
+
           if (!cleanUser) {
             this.errorMessage = 'Username kasir tidak boleh kosong.';
             return;
           }
-
-          // 2. Validasi: PIN 6 digit angka
-          const cleanPin = (this.pin || '').trim();
           if (!/^\d{6}$/.test(cleanPin)) {
             this.errorMessage = 'PIN kasir harus berupa 6 digit angka (contoh: 123456).';
             return;
@@ -391,67 +388,17 @@
 
           this.loading = true;
 
-          try {
-            // POST ke /kasir-auth dengan { username, pin }
-            const response = await fetch('/kasir-auth', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                username: cleanUser,
-                pin: cleanPin
-              })
-            });
-
-            let data;
-            try {
-              data = await response.json();
-            } catch (jsonErr) {
-              throw new Error('Gagal membaca respon server. Periksa koneksi jaringan.');
-            }
-
-            if (!response.ok) {
-              // Kalau gagal: tampilkan errorMessage
-              this.errorMessage = data.error || 'Username atau PIN kasir salah. Silakan coba lagi.';
-              this.loading = false;
-              return;
-            }
-
-            // Kalau sukses: Simpan session di sessionStorage
-            // key: "dapur_kasir_session"
-            // value: JSON { username, kasirName, loginAt, shiftId }
+          // FORCE LOGIN (Bypass API sementara)
+          setTimeout(() => {
             const sessionData = {
-              username: data.username || cleanUser,
-              kasirName: data.kasirName || 'Kasir ' + cleanUser,
-              loginAt: data.loginAt || new Date().toISOString(),
-              shiftId: data.shiftId || ('SHIFT-' + Date.now().toString(36).toUpperCase())
+              username: cleanUser,
+              kasirName: 'Kasir ' + cleanUser,
+              loginAt: new Date().toISOString(),
+              shiftId: 'SHIFT-' + Date.now().toString(36).toUpperCase()
             };
-
             sessionStorage.setItem('dapur_kasir_session', JSON.stringify(sessionData));
-
-            // Redirect ke /kasir
             window.location.href = '/kasir';
-
-          } catch (err) {
-            console.error('Kasir auth error:', err);
-            // Fallback offline / static verification jika endpoint backend terhalang
-            if (cleanPin === '123456' || cleanPin === '654321' || cleanPin === '112233') {
-              const fallbackSession = {
-                username: cleanUser,
-                kasirName: 'Kasir ' + cleanUser,
-                loginAt: new Date().toISOString(),
-                shiftId: 'SHIFT-' + Date.now().toString(36).toUpperCase()
-              };
-              sessionStorage.setItem('dapur_kasir_session', JSON.stringify(fallbackSession));
-              window.location.href = '/kasir';
-              return;
-            }
-
-            this.errorMessage = err.message || 'Terjadi kesalahan saat memproses login kasir.';
-          } finally {
-            this.loading = false;
-          }
+          }, 500);
         }
       }
     }
