@@ -155,7 +155,7 @@ window.accountingApp = function() {
     // ------------------------------------------------------------------------
     appReady: false,
     splashAkunTitle: 'AKUNTANSI',
-    splashAkunSubtitle: 'Digital Culinary',
+    splashAkunSubtitle: 'Sistem Internal Galangan',
     activeTab: 'dashboard',
     reportSubTab: 'pl',
     mobileMenuOpen: false,
@@ -570,6 +570,17 @@ window.accountingApp = function() {
     },
 
     /**
+     * FASE 2: Teks loading screen — brand lama (Digital Culinary / Dapur Kuliner Viral)
+     * tidak ditampilkan lagi walau masih tersimpan di site_config/localStorage.
+     */
+    splashSubtitleFromConfig(value) {
+      const v = String(value || '').trim();
+      const legacy = ['digital culinary', 'dapur kuliner viral', 'dapur kuliner', 'dukulviral'];
+      if (!v || legacy.includes(v.toLowerCase())) return 'Sistem Internal Galangan';
+      return v;
+    },
+
+    /**
      * Inisialisasi Firebase Config
      */
       async loadSiteName() {
@@ -581,7 +592,7 @@ window.accountingApp = function() {
           if (cached && cached.trim()) {
             this.siteName = cached.trim();
             this.splashAkunTitle = 'AKUNTANSI';
-            this.splashAkunSubtitle = this.siteName || 'Digital Culinary';
+            this.splashAkunSubtitle = this.splashSubtitleFromConfig(this.siteName);
           }
         } catch (e) {}
 
@@ -605,7 +616,7 @@ window.accountingApp = function() {
           if (name && typeof name === 'string' && name.trim()) {
             this.siteName = name.trim();
             this.splashAkunTitle = 'AKUNTANSI';
-            this.splashAkunSubtitle = this.siteName || 'Digital Culinary';
+            this.splashAkunSubtitle = this.splashSubtitleFromConfig(this.siteName);
             try { localStorage.setItem('dapur_site_name', this.siteName); } catch (e) {}
             console.log('[ACCT-APP] Site name loaded:', this.siteName);
           }

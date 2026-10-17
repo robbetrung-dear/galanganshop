@@ -288,15 +288,16 @@
   <div x-show="!appReady"
        x-transition.opacity.duration.300ms
        class="fixed inset-0 z-[9999] bg-gradient-to-br from-stone-900 to-stone-800 flex flex-col items-center justify-center gap-5 pointer-events-none">
-    <div class="w-20 h-20 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-2xl">
+    <div class="w-20 h-20 rounded-2xl bg-brand-600 flex items-center justify-center shadow-2xl">
       <i class="fa-solid fa-cash-register text-white text-3xl"></i>
     </div>
     <div class="text-center space-y-1">
       <h1 class="font-black text-white text-xl tracking-tight uppercase" x-text="splashKasirTitle"></h1>
       <p class="text-stone-400 text-xs tracking-wide" x-text="splashKasirSubtitle"></p>
     </div>
+    <!-- FASE 2: warna garis loading diselaraskan ke tema brand (biru), animasi tetap animate-pulse -->
     <div class="w-32 h-1 bg-stone-700 rounded-full overflow-hidden">
-      <div class="h-full bg-emerald-500 animate-pulse" style="width:70%"></div>
+      <div class="h-full bg-brand-500 animate-pulse" style="width:70%"></div>
     </div>
     <p class="text-stone-500 text-[11px] tracking-wider uppercase">Memuat...</p>
   </div>
@@ -917,6 +918,16 @@
         <h5 class="font-bold text-xs sm:text-sm text-stone-900 leading-snug" x-text="item.name"></h5>
         <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
           <span class="text-[11px] text-stone-500 font-mono" x-text="formatRupiah(item.price)"></span>
+          <!-- FASE 2: label tier harga aktif (Eceran / Partai / Agen) -->
+          <span class="px-1.5 py-0.5 rounded border text-[10px] font-black font-mono whitespace-nowrap"
+            :class="item.priceTier === 'agen' ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                  : item.priceTier === 'partai' ? 'bg-blue-100 text-blue-700 border-blue-300'
+                  : 'bg-stone-100 text-stone-500 border-stone-200'"
+            x-text="item.priceTierLabel || 'Harga Eceran'"></span>
+          <!-- FASE 2: petunjuk minimum order untuk harga grosir -->
+          <span x-show="item.grosirMinOrder > item.qty"
+            class="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold whitespace-nowrap"
+            x-text="'Min. ' + item.grosirMinOrder + ' untuk harga grosir'"></span>
           <template x-if="item.itemDiscountValue > 0">
             <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-black font-mono whitespace-nowrap">
               Disc <span x-text="item.itemDiscountType === 'nominal' ? formatRupiah(item.itemDiscountValue) : item.itemDiscountValue + '%'"></span>
@@ -1856,6 +1867,27 @@
                 <span>+ Tambah Menu</span>
             </button>
 
+            <!-- FASE 2: TARIK DATA KATALOG (Firestore sst-catalog → RTDB menu_items) -->
+            <button
+                type="button"
+                @click="syncCatalogFromSst({ mode: 'merge' })"
+                :disabled="syncCatalogLoading"
+                class="min-h-[48px] px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+                title="Tarik katalog produk dari Firestore (sst-catalog) ke database kasir, tanpa menghapus menu yang sudah ada">
+                <i class="fa-solid text-xs" :class="syncCatalogLoading ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-down'"></i>
+                <span x-text="syncCatalogLoading ? 'Menarik katalog...' : 'Tarik Data Katalog'"></span>
+            </button>
+
+            <button
+                type="button"
+                @click="syncCatalogFromSst({ mode: 'merge', dryRun: true })"
+                :disabled="syncCatalogLoading"
+                class="min-h-[48px] px-3.5 rounded-xl bg-white hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed text-blue-800 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-blue-300"
+                title="Pratinjau hasil tarik katalog (tidak menulis apa pun ke database)">
+                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                <span>Pratinjau</span>
+            </button>
+
             <button 
                 type="button" 
                 @click="openAddInventoryModal()"
@@ -1896,6 +1928,18 @@
 
         <!-- TAMPILAN 1: PRODUK & RESEP BAHAN BAKU -->
         <div x-show="inventoryTab === 'products'" class="space-y-4">
+          <!-- FASE 2: Hasil Tarik Data Katalog -->
+          <div x-show="syncCatalogLastResult" x-transition
+            class="rounded-2xl p-3.5 border text-xs flex items-start gap-2.5"
+            :class="syncCatalogLastResult && syncCatalogLastResult.ok ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-red-50 border-red-200 text-red-900'">
+            <i class="fa-solid mt-0.5"
+              :class="syncCatalogLastResult && syncCatalogLastResult.ok ? (syncCatalogLastResult.dryRun ? 'fa-magnifying-glass' : 'fa-circle-check') : 'fa-triangle-exclamation'"></i>
+            <div class="min-w-0">
+              <div class="font-extrabold" x-text="syncCatalogLastResult ? (syncCatalogLastResult.ok ? (syncCatalogLastResult.dryRun ? 'Pratinjau Tarik Data Katalog' : 'Sinkronisasi Katalog Berhasil') : 'Sinkronisasi Katalog Gagal') : ''"></div>
+              <div class="mt-0.5 font-mono text-[11px] break-words" x-text="syncCatalogLastResult ? syncCatalogLastResult.message : ''"></div>
+            </div>
+          </div>
+
           <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
             <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
             <div class="text-xs text-amber-900">

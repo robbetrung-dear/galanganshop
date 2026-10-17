@@ -25,7 +25,11 @@ window.kasirApp = () => ({
     appReady: false,
     scannerEnabled: true,
     splashKasirTitle: 'KASIR',
-    splashKasirSubtitle: 'Digital Culinary',
+    splashKasirSubtitle: 'Sistem Internal Galangan',
+
+    // FASE 2: Sinkronisasi Katalog (Firestore sst-catalog → RTDB menu_items)
+    syncCatalogLoading: false,
+    syncCatalogLastResult: null,
 
   // =========================================================================
   // 1. STATE DASAR & NAVIGASI
@@ -663,7 +667,7 @@ try {
         if (val.kasirTitle) this.customKasirTitle = val.kasirTitle;
         if (val.kasirSubtitle) this.customKasirSubtitle = val.kasirSubtitle;
         this.splashKasirTitle = 'KASIR';
-        this.splashKasirSubtitle = this.customKasirSubtitle || 'Digital Culinary';
+        this.splashKasirSubtitle = this.splashSubtitleFromConfig(this.customKasirSubtitle);
         console.log('[KASIR] Custom title loaded:', val.kasirTitle);
 
                // 🏢 Sync info bisnis (brand, alamat, telepon)
@@ -1828,15 +1832,103 @@ try {
 
     if (existing) {
       existing.qty += 1;
+      this._recalcCartItemTier(existing, menuItem);
     } else {
       this.cart.push({
         id: menuItem.id,
         name: menuItem.name,
         price: Number(menuItem.price) || 0,
-        qty: 1
+        basePrice: Number(menuItem.price) || 0,
+        qty: 1,
+        priceTier: 'eceran',
+        priceTierLabel: 'Harga Eceran'
       });
+      this._recalcCartItemTier(this.cart[this.cart.length - 1], menuItem);
     }
     this.playSound('click');
+  },
+
+  /**
+   * FASE 2: Baca info harga grosir dari 1 item menu_items.
+   * Field kanonik = snake_case; alias camelCase lama tetap dibaca.
+   */
+  getMenuGrosirInfo(menuItem) {
+    const src = menuItem || {};
+    const firstDefined = (...vals) => {
+      for (const v of vals) {
+        if (v !== undefined && v !== null && v !== '') return v;
+      }
+      return undefined;
+    };
+    const partai = Number(firstDefined(src.harga_partai, src.wholesalePrice) || 0) || 0;
+    const agen = Number(firstDefined(src.harga_agen, src.agentPrice) || 0) || 0;
+    const minOrder = Number(firstDefined(src.minimum_order, src.minOrderQty) || 0) || 0;
+    const minAgenRaw = Number(firstDefined(src.minimum_order_agen) || 0) || 0;
+    const flag = firstDefined(src.enable_grosir, src.enableWholesale);
+    const minOrderFinal = minOrder > 0 ? minOrder : 10;
+    return {
+      // Aktif kalau checkbox dicentang, atau kalau salah satu harga grosir terisi.
+      enabled: Boolean(flag) || partai > 0 || agen > 0,
+      partai,
+      agen,
+      minOrder: minOrderFinal,
+      // Ambang agen opsional; kalau kosong, agen mengikuti minimum order partai.
+      minOrderAgen: minAgenRaw > 0 ? minAgenRaw : minOrderFinal
+    };
+  },
+
+  /**
+   * FASE 2: Tentukan tier harga keranjang (Eceran / Partai / Agen).
+   *
+   * Aturan (bertahap & tidak pernah menaikkan harga):
+   *  - qty < minimum_order          -> Harga Eceran (harga normal produk).
+   *  - qty >= minimum_order         -> Harga Partai (bila diisi).
+   *  - qty >= minimum_order_agen    -> Harga Agen (bila diisi); bila ambang agen
+   *    tidak diisi, agen mengikuti minimum order yang sama dengan partai.
+   *  - Harga grosir hanya dipakai bila > 0 DAN lebih murah dari harga eceran;
+   *    kalau beberapa tier memenuhi syarat, dipakai yang termurah.
+   * Mengubah item keranjang in-place: basePrice, price, priceTier, priceTierLabel,
+   * grosirMinOrder.
+   */
+  _recalcCartItemTier(cartItem, menuItem) {
+    if (!cartItem) return;
+
+    const basePrice = Number(cartItem.basePrice)
+      || Number(menuItem && menuItem.price)
+      || Number(cartItem.price) || 0;
+
+    cartItem.basePrice = basePrice;
+    cartItem.price = basePrice;
+    cartItem.priceTier = 'eceran';
+    cartItem.priceTierLabel = 'Harga Eceran';
+    cartItem.grosirMinOrder = 0;
+
+    const grosir = this.getMenuGrosirInfo(menuItem);
+    if (!grosir.enabled) return;
+
+    const qty = Number(cartItem.qty) || 1;
+
+    // Belum mencapai minimum order -> tetap eceran, tapi simpan batasnya
+    // supaya UI bisa menampilkan petunjuk "min. X pcs untuk harga grosir".
+    if (qty < grosir.minOrder) {
+      cartItem.grosirMinOrder = grosir.minOrder;
+      return;
+    }
+
+    const kandidat = [];
+    if (grosir.agen > 0 && grosir.agen < basePrice && qty >= grosir.minOrderAgen) {
+      kandidat.push({ price: grosir.agen, tier: 'agen', label: 'Harga Agen', min: grosir.minOrderAgen });
+    }
+    if (grosir.partai > 0 && grosir.partai < basePrice) {
+      kandidat.push({ price: grosir.partai, tier: 'partai', label: 'Harga Partai', min: grosir.minOrder });
+    }
+    if (kandidat.length === 0) return;
+
+    // Ambil harga grosir termurah di antara tier yang syaratnya terpenuhi.
+    kandidat.sort((a, b) => a.price - b.price);
+    cartItem.price = kandidat[0].price;
+    cartItem.priceTier = kandidat[0].tier;
+    cartItem.priceTierLabel = kandidat[0].label;
   },
 
   /**
@@ -1853,6 +1945,8 @@ try {
         return;
       }
       item.qty += 1;
+      const menuItem = this.menuItems.find(m => m.id === id);
+      if (menuItem) this._recalcCartItemTier(item, menuItem);
       this.playSound('click');
     }
   },
@@ -1869,6 +1963,8 @@ try {
     if (index !== -1) {
       if (this.cart[index].qty > 1) {
         this.cart[index].qty -= 1;
+        const menuItem = this.menuItems.find(m => m.id === id);
+        if (menuItem) this._recalcCartItemTier(this.cart[index], menuItem);
       } else {
         this.cart.splice(index, 1);
       }
@@ -1892,9 +1988,13 @@ try {
     if (num > currentStock) {
       this.showToast(`Stok "${item.name}" maksimal ${currentStock} porsi`, 'error');
       item.qty = currentStock;
-      return;
+    } else {
+      item.qty = num;
     }
-    item.qty = num;
+
+    // FASE 2: qty diubah manual (ketik) → hitung ulang tier harga grosir.
+    const menuItem = this.menuItems.find(m => m.id === item.id);
+    if (menuItem) this._recalcCartItemTier(item, menuItem);
   },
 
   /**
@@ -3457,6 +3557,17 @@ try {
               this.cart = draft.cart;
               this.orderNote = draft.orderNote || '';
               this.discountAmount = draft.discountAmount || 0;
+              // FASE 2: draft lama belum punya basePrice/tier → hitung ulang
+              // supaya harga grosir tetap konsisten dengan master produk.
+              try {
+                (this.cart || []).forEach(it => {
+                  if (!it) return;
+                  const menuItem = this.menuItems.find(m => m.id === it.id);
+                  this._recalcCartItemTier(it, menuItem);
+                });
+              } catch (e) {
+                console.warn('Recalc tier draft gagal:', e);
+              }
               this.showToast('Draft pesanan berhasil dipulihkan', 'success');
               this.playSound('notify');
             } else {
@@ -6301,6 +6412,16 @@ try {
           ((linkedInv.stok !== undefined && linkedInv.stok !== null) ? linkedInv.stok : 0)
         );
       }
+      // FASE 2: item katalog hasil "Tarik Data Katalog" (dari Firestore) tidak
+      // punya resep/BOM. Pakai stok langsung dari menu_items.stock bila ada,
+      // supaya produk katalog tetap bisa dijual di kasir.
+      if (menu) {
+        const directRaw = (menu.stock !== undefined && menu.stock !== null) ? menu.stock
+          : ((menu.stok !== undefined && menu.stok !== null) ? menu.stok : null);
+        if (directRaw !== null && !Number.isNaN(Number(directRaw))) {
+          return Math.max(0, Number(directRaw));
+        }
+      }
       return 0;
     }
 
@@ -6573,6 +6694,73 @@ try {
       }] : []
     };
     this.newMenuModal = true;
+  },
+
+  /**
+   * FASE 2: Teks loading screen.
+   * Brand lama yang masih tersimpan di site_config (mis. kasirSubtitle lama)
+   * tidak ditampilkan lagi; nilai custom yang sah tetap dipakai apa adanya.
+   */
+  splashSubtitleFromConfig(value) {
+    const v = String(value || '').trim();
+    const legacy = ['digital culinary', 'dapur kuliner viral', 'dapur kuliner', 'dukulviral'];
+    if (!v || legacy.includes(v.toLowerCase())) return 'Sistem Internal Galangan';
+    return v;
+  },
+
+  /**
+   * FASE 2: TARIK DATA KATALOG.
+   * Memanggil Cloudflare Function POST /api/sync-products untuk menarik produk
+   * dari Cloud Firestore (app sst-catalog) ke RTDB /menu_items yang dibaca kasir.
+   * Listener realtime menu_items akan otomatis menyegarkan daftar menu setelah sync.
+   */
+  async syncCatalogFromSst(opts = {}) {
+    if (this.syncCatalogLoading) return;
+
+    const mode = opts.mode === 'replace' ? 'replace' : 'merge';
+    const dryRun = opts.dryRun === true;
+
+    if (mode === 'replace' && !dryRun) {
+      if (!confirm('Mode REPLACE akan mengganti SELURUH daftar menu (termasuk menu non-katalog). Lanjutkan?')) return;
+    }
+
+    this.syncCatalogLoading = true;
+    this.syncCatalogLastResult = null;
+
+    try {
+      const res = await fetch('/api/sync-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, dryRun, confirm: mode === 'replace', syncCategories: true })
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Endpoint /api/sync-products tidak aktif di origin ini (HTTP ' + res.status + '). Uji lewat domain Cloudflare Pages hasil deploy.');
+      }
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.success !== true) {
+        throw new Error(body.error || ('HTTP ' + res.status));
+      }
+
+      const s = body.summary || {};
+      const label = (dryRun ? 'Pratinjau' : 'Berhasil') + ': ' + (s.mapped || 0) + ' produk — ' +
+        (s.added || 0) + ' baru, ' + (s.updated || 0) + ' diperbarui, ' + (s.categories || 0) + ' kategori (' + (s.ms || 0) + ' ms)';
+
+      this.syncCatalogLastResult = { ok: true, dryRun: Boolean(body.dryRun), mode: body.mode || mode, message: label, steps: body.steps || {} };
+      this.showToast((dryRun ? '🔍 Pratinjau katalog: ' : '✅ Katalog tersinkron: ') + (s.mapped || 0) + ' produk', dryRun ? 'notify' : 'success');
+      this.playSound(dryRun ? 'notify' : 'success');
+    } catch (err) {
+      const msg = (err && err.message) ? err.message : 'Gagal sinkronisasi katalog';
+      this.syncCatalogLastResult = { ok: false, dryRun, mode, message: msg };
+      this.showToast('❌ ' + msg, 'error');
+      this.playSound('error');
+    } finally {
+      // Busy flag dilepas di finally: refresh realtime menu_items tidak boleh
+      // menahan tombol ini.
+      this.syncCatalogLoading = false;
+    }
   },
 
   /**
