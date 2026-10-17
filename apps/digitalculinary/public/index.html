@@ -348,6 +348,12 @@
           <span class="hidden md:inline">Analitik</span>
         </a>
 
+        <!-- FASE 4: Tombol Ke Toko Online (React Landing Page, domain publik) -->
+        <a href="https://galanganshop.pages.dev" target="_blank" rel="noreferrer" class="w-8 h-8 sm:w-auto sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 text-brand-700 bg-brand-50 rounded-xl border border-brand-200 hover:bg-brand-100 transition text-xs font-bold whitespace-nowrap shadow-2xs flex-shrink-0" title="Buka Toko Online (Landing Page)">
+          <i class="fa-solid fa-store text-xs"></i>
+          <span class="hidden md:inline">Ke Toko Online</span>
+        </a>
+
         <!-- Tombol Akses Portal (Gembok / Kasir Aktif) -->
         <div class="relative" @click.outside="isKasirMenuOpen = false">
           <!-- State 1: Belum Login Kasir -> Icon Gembok (Buka Login Gate) -->
@@ -6103,79 +6109,78 @@ git push -u origin main</pre>
         siteConfig: {
           brandName: 'GALANGAN SHOP',
           brandWords: [
-            { text: 'DAPUR', color: '#ea580c' },
-            { text: 'KULINER', color: '#f59e0b' },
-            { text: 'VIRAL', color: '#e11d48' }
+            { text: 'GALANGAN', color: '#0284c7' },
+            { text: 'SHOP', color: '#0c4a6e' }
           ],
-          tagline: 'Kuliner & Catering',
+          tagline: 'Toko Besi, Baut & Alat Teknik',
           hideHeroBannerPermanently: false,   // ✅ Feature 2: persisted di Firebase
           showTrackerButton: true,
-          logoType: 'icon', // 'icon' | 'image'
-          logoIcon: 'fa-solid fa-utensils',
-          logoImage: '',
-          logoBgColor: '#ea580c',
+          logoType: 'image', // 'icon' | 'image'
+          logoIcon: 'fa-solid fa-screwdriver-wrench',
+          logoImage: '/logo-gs-512.png',
+          logoBgColor: '#0284c7',
           headerBgColor: '#ffffff',
-          pageBgColor: '#fafaf9',
+          pageBgColor: '#f8fafc',
           pageBgImage: '',
           pageTextColor: '#1c1917',
-          themeAccent: '#ea580c',
-          promoRibbon: '',
+          themeAccent: '#0284c7',
+          promoRibbon: 'Gratis ongkir area Sidoarjo untuk pembelian di atas Rp500.000 🚚',
           promoRibbonBadge: 'PROMO',
-          promoRibbonLinkText: 'Cek Semua Promo!',
-          promoRibbonBg: '#000000',
+          promoRibbonLinkText: 'Lihat Semua Promo',
+          promoRibbonBg: '#0c4a6e',
           promoRibbonTextColor: '#ffffff',
-          navMenuText: 'Menu Harian',
-          navCateringText: 'Paket Catering',
+          navMenuText: 'Katalog Produk',
+          navCateringText: 'Harga Grosir',
           navOngkirText: 'Cek Ongkir',
-          navB2bText: 'Catering B2B',
-          heroBadge: 'Resep Dapur Rumahan Autentik & Higienis',
-          heroTitle1: 'Dari Dapur Kami,',
-          heroTitle2: 'Viral di Meja Anda.',
-          heroTitle2Color: '#fb923c',
-          heroDescription: 'Nikmati rice bowl katsu viral, aneka mie pedas nyemek, cemilan lumer keju, dan paket catering box premium (Silver, Gold, Platinum). Real-time tracking, cek ongkir seketika, dan bayar aman dengan QRIS / E-Wallet.',
-          heroBtn1: 'Pesan Satuan',
-          heroBtn1Bg: '#ea580c',
+          navB2bText: 'Pengadaan B2B',
+          heroBadge: 'Fastener & Alat Teknik Berkualitas',
+          heroTitle1: 'Kebutuhan Besi & Baut,',
+          heroTitle2: 'Lengkap di Satu Tempat.',
+          heroTitle2Color: '#0ea5e9',
+          heroDescription: 'Baut hexagonal grade 8.8, mur, ring, dan alat teknik untuk konstruksi, bengkel, dan manufaktur. Harga eceran, partai & agen, pengiriman se-Indonesia, pembayaran QRIS / transfer bank.',
+          heroBtn1: 'Belanja Sekarang',
+          heroBtn1Bg: '#0284c7',
           heroBtn1TextColor: '#ffffff',
-          heroBtn2: 'Order Catering Box',
-          heroBtn2Bg: '#292524',
+          heroBtn2: 'Pengadaan B2B',
+          heroBtn2Bg: '#0c4a6e',
           heroBtn2TextColor: '#ffffff',
-          heroProofBadge: '1.200+ Pesanan Puas',
-          heroImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&auto=format&fit=crop&q=80',
+          heroProofBadge: 'Dipercaya 1.000+ Pelanggan',
+          heroImage: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1600&auto=format&fit=crop&q=80',
           heroOverlayColor: '#0c0a09',
           heroImageOpacity: 0.65,
-          menuSectionTitle: 'Menu Harian & Ala Carte',
-          menuSectionSubtitle: 'Pilihan hidangan siap santap dengan cita rasa autentik dan porsi mengenyangkan.',
+          menuSectionTitle: 'Katalog Produk',
+          menuSectionSubtitle: 'Fastener, baut, mur, dan alat teknik siap kirim dengan harga kompetitif.',
           menuItemsPerPage: 12,
           // BUG #2: default RTO ON (sama dengan nilai live di Firebase).
           // Kalau config Firebase belum termuat, landing page tidak jatuh ke mode non-RTO
           // (info "tanya stok ke admin" + opsi kurir) yang tidak sesuai operasional pickup-only.
           showMenuStockOnMain: true,
-          cateringBadge: 'Pilihan Box Catering Dapur',
-          cateringTitle: 'Paket Catering Harian & Acara Spesial',
-          cateringSubtitle: 'Pilihan box catering higienis untuk meeting, arisan, syukuran, dan ulang tahun. Minimum order 15 pax.',
-          b2bBadge: 'Layanan Khusus Corporate & Event',
-          b2bTitle: 'Pesanan Catering Perusahaan / B2B (Min. 50 Box)',
-          b2bSubtitle: 'Kebutuhan meeting kantor, seminar perusahaan, shooting, atau wedding gathering? Kami sediakan faktur pajak / invoice resmi, menu custom test food gratis, dan koordinasi langsung dengan tim admin B2B kami.',
-          address: 'Jl. Sudirman No. 45, Kebayoran Baru, Jakarta Selatan 12190',
-          operationalHours: 'Senin - Minggu: 08.00 - 21.00 WIB (Buka Setiap Hari)',
-          phone: '0812-3456-7890',
-          footerDesc: 'Spesialis kuliner rumahan viral, rice bowl kekinian, & catering box bermutu tinggi dengan jaminan rasa dan kebersihan terbaik.',
-          footerBgColor: '#1c1917',
+          cateringBadge: 'Harga Khusus Partai & Agen',
+          cateringTitle: 'Harga Partai & Agen',
+          cateringSubtitle: 'Beli dalam jumlah besar? Dapatkan harga partai & agen. Hubungi admin untuk minimum order dan penawaran khusus.',
+          b2bBadge: 'Layanan Pengadaan Corporate & Proyek',
+          b2bTitle: 'Pengadaan Besi & Baut untuk Perusahaan (B2B)',
+          b2bSubtitle: 'Kebutuhan proyek konstruksi, bengkel, pabrik, atau toko? Kami sediakan invoice/faktur pajak resmi, harga khusus volume besar, dan penanganan langsung oleh tim admin B2B.',
+          address: 'Jl. Dukuh Keramaian N0.60 RT02 / RW 08, Sumorame, Candi, Sidoarjo 61271',
+          operationalHours: 'Senin - Sabtu: 09.00 - 21.00 WIB (Buka Setiap Hari)',
+          phone: '0878-5616-8959',
+          footerDesc: 'Toko besi, baut & fastener berkualitas — solusi lengkap kebutuhan teknik, konstruksi, dan manufaktur Anda.',
+          footerBgColor: '#0c4a6e',
           footerTextColor: '#a8a29e',
-          footerCopyright: 'Siap Deploy ke Cloudflare Pages.',
+          footerCopyright: '© 2026 GALANGAN SHOP — Toko Besi & Alat Teknik',
           deliveryLinks: {
             shopeefood: '',
             grabfood: '',
             gofood: ''
           },
           socialLinks: {
-            instagram: 'https://instagram.com/digitalculinary-app',
-            facebook: 'https://facebook.com/digitalculinary-app',
-            tiktok: 'https://tiktok.com/@digitalculinary-app'
+            instagram: '',
+            facebook: '',
+            tiktok: ''
           },
 
           // ✅ TAMBAHKAN INI
-          kasirTitle: 'Kasir Pintar',
+          kasirTitle: 'Kasir Galangan',
           kasirSubtitle: 'Galangan Shop',
                     supervisorPin: '211211',
                     ownerWaNumbers: ['', '', '', '', ''],
