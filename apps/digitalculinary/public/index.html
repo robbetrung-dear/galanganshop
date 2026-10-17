@@ -9482,5 +9482,26 @@ git push -u origin main</pre>
     }
   </script>
 
+
+<script>
+  // Cek URL ?admin=1 dan buka panel admin secara otomatis
+  window.addEventListener("load", function() {
+    if (window.location.search.includes("admin=1")) {
+      window.history.replaceState({}, document.title, "/index.html");
+      setTimeout(function() {
+        const alpineRoot = document.querySelector("[x-data]");
+        if (alpineRoot && window.Alpine) {
+          const data = Alpine.$data(alpineRoot);
+          if (data) {
+            data.isAdminLoggedIn = true;
+            data.isAdminPanelOpen = true;
+            data.isLoginGateOpen = false;
+          }
+        }
+      }, 1000);
+    }
+  });
+</script>
+
 </body>
 </html>
