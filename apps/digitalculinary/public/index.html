@@ -3459,6 +3459,12 @@
                         <i class="fa-solid fa-pepper-hot text-red-500 text-[10px]"></i>
                         <span>Spicy</span>
                       </span>
+                      <!-- FASE 2: Badge Harga Grosir (Partai/Agen) -->
+                      <span x-show="readGrosirFromItem(item).enableWholesale" class="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-1 border border-blue-300"
+                        :title="'Grosir aktif — Partai: ' + (item.harga_partai ? formatRupiah(item.harga_partai) : '-') + ' | Agen: ' + (item.harga_agen ? formatRupiah(item.harga_agen) : '-') + ' | Min: ' + (item.minimum_order || 1) + ' pcs' + (item.minimum_order_agen > (item.minimum_order || 1) ? ' | Min Agen: ' + item.minimum_order_agen + ' pcs' : '')">
+                        <i class="fa-solid fa-tags text-[9px]"></i>
+                        <span>Grosir</span>
+                      </span>
                     </div>
                     <div class="flex items-center gap-2 mt-0.5 text-xs">
                       <span class="font-bold text-brand-700" x-text="formatRupiah(item.price)"></span>
@@ -5018,6 +5024,71 @@ git push -u origin main</pre>
           <div>
             <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Harga Coret / Normal (Rp)</label>
             <input type="number" x-model.number="menuForm.originalPrice" min="0" placeholder="Opsional untuk diskon" class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-mono" />
+          </div>
+        </div>
+
+        <!-- FITUR HARGA GROSIR (Partai & Agen) -->
+        <div class="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-200/80 transition">
+          <div class="flex items-center gap-2.5 mb-2.5">
+            <input
+              type="checkbox"
+              x-model="menuForm.enableWholesale"
+              class="rounded border-stone-300 text-brand-600 focus:ring-brand-500"
+            />
+            <label class="text-xs font-bold text-stone-700 uppercase cursor-pointer">Aktifkan Harga Grosir</label>
+            <span class="text-[10px] text-brand-600 font-extrabold bg-brand-100/90 px-1.5 py-0.5 rounded border border-brand-300 flex items-center gap-1">
+              <i class="fa-solid fa-tag text-[9px]"></i>
+              <span>Harga Partai &amp; Agen</span>
+            </span>
+          </div>
+          <div x-show="menuForm.enableWholesale" class="grid grid-cols-1 sm:grid-cols-2 gap-3 x-transition">
+            <div>
+              <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Harga Partai (Rp)</label>
+              <input
+                type="number"
+                x-model.number="menuForm.wholesalePrice"
+                min="0"
+                placeholder="Contoh: 180000"
+                class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-brand-700 font-mono"
+              />
+              <p class="text-[10px] text-stone-500 mt-0.5">Harga saat membeli dalam jumlah partai.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Harga Agen (Rp)</label>
+              <input
+                type="number"
+                x-model.number="menuForm.agentPrice"
+                min="0"
+                placeholder="Contoh: 150000"
+                class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-brand-700 font-mono"
+              />
+              <p class="text-[10px] text-stone-500 mt-0.5">Harga khusus agen/reseller.</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5">
+            <div x-show="menuForm.enableWholesale">
+              <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Minimum Order (Pcs)</label>
+              <input
+                type="number"
+                x-model.number="menuForm.minOrderQty"
+                min="1"
+                placeholder="10"
+                class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold font-mono"
+              />
+              <p class="text-[10px] text-stone-500 mt-0.5">Minimal jumlah untuk dapat harga grosir.</p>
+            </div>
+            <!-- Opsional: ambang khusus harga agen. Kosong = sama dengan Minimum Order. -->
+            <div x-show="menuForm.enableWholesale">
+              <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Min. Order Agen (Pcs) <span class="text-stone-400 normal-case">(opsional)</span></label>
+              <input
+                type="number"
+                x-model.number="menuForm.minOrderAgen"
+                min="0"
+                placeholder="Sama dengan Minimum Order"
+                class="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-white font-mono"
+              />
+              <p class="text-[10px] text-stone-500 mt-0.5">Kalau diisi, Harga Agen baru berlaku mulai jumlah ini.</p>
+            </div>
           </div>
         </div>
 
@@ -8650,7 +8721,7 @@ git push -u origin main</pre>
             this.isAdminLoggedIn = false;
             try { sessionStorage.removeItem("dapur_admin_session"); } catch (e) {}
 
-            window.location.href = '/kasir';
+            /* window.location.href = '/kasir'; */
             return;
           }
 
@@ -8694,7 +8765,7 @@ git push -u origin main</pre>
             this.isAdminLoggedIn = false;
             try { sessionStorage.removeItem("dapur_admin_session"); } catch (e) {}
 
-            window.location.href = '/kasir';
+            /* window.location.href = '/kasir'; */
           } catch (err) {
             console.error('Kasir login error:', err);
             this.kasirErrorMessage = 'Gagal memproses otentikasi login. Silakan periksa koneksi Anda.';
@@ -9030,7 +9101,12 @@ git push -u origin main</pre>
             image: '',
             description: '',
             isSpicy: false,
-            showOnMain: true
+            showOnMain: true,
+            enableWholesale: false,
+            wholesalePrice: null,
+            agentPrice: null,
+            minOrderQty: 10,
+            minOrderAgen: null
           };
           this.isMenuFormOpen = true;
         },
@@ -9064,7 +9140,8 @@ git push -u origin main</pre>
             image: item.image || '',
             description: item.description || '',
             isSpicy: Boolean(item.isSpicy),
-            showOnMain: item.showOnMain !== false
+            showOnMain: item.showOnMain !== false,
+            ...this.readGrosirFromItem(item)
           };
           this.isMenuFormOpen = true;
         },
@@ -9075,6 +9152,33 @@ git push -u origin main</pre>
             return;
           }
           this.menuForm.categoryLabel = this.getCategoryLabel(this.menuForm.category);
+        },
+
+        /**
+         * FASE 2: Baca harga grosir dari satu item menu_items.
+         * Field kanonik = snake_case (harga_partai/harga_agen/minimum_order/enable_grosir);
+         * alias camelCase lama tetap dibaca supaya data lama tidak hilang.
+         */
+        readGrosirFromItem(item) {
+          const src = item || {};
+          const firstDefined = (...vals) => {
+            for (const v of vals) {
+              if (v !== undefined && v !== null && v !== '') return v;
+            }
+            return undefined;
+          };
+          const partai = Number(firstDefined(src.harga_partai, src.wholesalePrice) || 0) || 0;
+          const agen = Number(firstDefined(src.harga_agen, src.agentPrice) || 0) || 0;
+          const minOrder = Number(firstDefined(src.minimum_order, src.minOrderQty) || 0) || 0;
+          const minAgen = Number(firstDefined(src.minimum_order_agen) || 0) || 0;
+          const flag = firstDefined(src.enable_grosir, src.enableWholesale);
+          return {
+            enableWholesale: Boolean(flag) || partai > 0 || agen > 0,
+            wholesalePrice: partai > 0 ? partai : null,
+            agentPrice: agen > 0 ? agen : null,
+            minOrderQty: minOrder > 0 ? minOrder : 10,
+            minOrderAgen: minAgen > 0 ? minAgen : null
+          };
         },
 
         async toggleMenuItemSpicy(item) {
@@ -9135,19 +9239,41 @@ git push -u origin main</pre>
             this.menuForm.categoryLabel = this.getCategoryLabel(this.menuForm.category);
           }
 
+          // FITUR FASE 2: Harga Grosir (Partai & Agen).
+          // Field kanonik yang disimpan ke Firebase (menu_items):
+          //   enable_grosir, harga_partai, harga_agen, minimum_order
+          const enableGrosir = Boolean(this.menuForm.enableWholesale);
           const formPayload = {
             ...this.menuForm,
             isSpicy: Boolean(this.menuForm.isSpicy),
             showOnMain: this.menuForm.showOnMain !== false,
+            enable_grosir: enableGrosir,
+            harga_partai: enableGrosir ? (Number(this.menuForm.wholesalePrice) || 0) : 0,
+            harga_agen: enableGrosir ? (Number(this.menuForm.agentPrice) || 0) : 0,
+            minimum_order: enableGrosir ? (Number(this.menuForm.minOrderQty) || 1) : 1,
+            minimum_order_agen: enableGrosir ? (Number(this.menuForm.minOrderAgen) || 0) : 0,
             updatedAt: Date.now()
           };
           delete formPayload.customCategory;
+          // Hanya field kanonik yang dikirim — alias camelCase form dibuang
+          // supaya tidak ada dua sumber kebenaran di database.
+          delete formPayload.enableWholesale;
+          delete formPayload.wholesalePrice;
+          delete formPayload.agentPrice;
+          delete formPayload.minOrderQty;
+          delete formPayload.minOrderAgen;
 
           let targetItem = null;
           if (this.editingMenuItemId) {
             const idx = this.menuItems.findIndex(m => m.id === this.editingMenuItemId);
             if (idx !== -1) {
-              this.menuItems[idx] = { ...this.menuItems[idx], ...formPayload };
+              const mergedItem = { ...this.menuItems[idx], ...formPayload };
+              delete mergedItem.enableWholesale;
+              delete mergedItem.wholesalePrice;
+              delete mergedItem.agentPrice;
+              delete mergedItem.minOrderQty;
+              delete mergedItem.minOrderAgen;
+              this.menuItems[idx] = mergedItem;
               targetItem = this.menuItems[idx];
             }
           } else {
