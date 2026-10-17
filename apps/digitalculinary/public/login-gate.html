@@ -360,17 +360,8 @@
         },
 
         pilihAdmin() {
-          // Jika ada fungsi parent openAdminModal (saat di-embed)
-          if (typeof window.openAdminModal === 'function') {
-            window.openAdminModal();
-            return;
-          }
-          if (window.parent && typeof window.parent.openAdminModal === 'function') {
-            window.parent.openAdminModal();
-            return;
-          }
-          // Default redirect atau panggil modal admin jika di index.html
-          window.location.href = '/#admin-login';
+        // Arahkan ke halaman Landing Page untuk Login Admin
+        window.location.href = "/index.html#admin-login";
         },
 
         closeGate() {

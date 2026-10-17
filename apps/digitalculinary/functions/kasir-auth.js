@@ -73,7 +73,7 @@ async function checkRateLimit(ip, env) {
   const now = Date.now();
 
   // Jika Cloudflare KV tersedia
-  if (env && env.RATE_LIMIT_KV) {
+  if (false) {
     try {
       const kvKey = `rate_${ip}`;
       const recordStr = await env.RATE_LIMIT_KV.get(kvKey);
@@ -109,7 +109,7 @@ async function checkRateLimit(ip, env) {
 async function recordFailedAttempt(ip, env) {
   const now = Date.now();
 
-  if (env && env.RATE_LIMIT_KV) {
+  if (false) {
     try {
       const kvKey = `rate_${ip}`;
       const recordStr = await env.RATE_LIMIT_KV.get(kvKey);
@@ -142,7 +142,7 @@ async function recordFailedAttempt(ip, env) {
 
 // Helper: Reset Rate Limit setelah Login Sukses
 async function clearRateLimit(ip, env) {
-  if (env && env.RATE_LIMIT_KV) {
+  if (false) {
     try {
       await env.RATE_LIMIT_KV.delete(`rate_${ip}`);
     } catch (e) {}
