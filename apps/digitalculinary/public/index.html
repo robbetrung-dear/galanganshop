@@ -9503,5 +9503,31 @@ git push -u origin main</pre>
   });
 </script>
 
+
+<script>
+  // Cek sessionStorage dan buka panel admin
+  window.addEventListener("load", function() {
+    setTimeout(function() {
+      try {
+        const isAdmin = sessionStorage.getItem("dapur_admin_session") === "true";
+        if (isAdmin) {
+          const alpineRoot = document.querySelector("[x-data]");
+          if (alpineRoot && window.Alpine) {
+            const data = Alpine.$data(alpineRoot);
+            if (data) {
+              console.log("[AUTO-ADMIN] Opening admin panel...");
+              data.isAdminLoggedIn = true;
+              data.isAdminPanelOpen = true;
+              data.isLoginGateOpen = false;
+            }
+          }
+        }
+      } catch(e) {
+        console.error("[AUTO-ADMIN] Error:", e);
+      }
+    }, 1500); // Tunggu Alpine siap
+  });
+</script>
+
 </body>
 </html>
