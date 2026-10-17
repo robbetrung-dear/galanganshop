@@ -1,0 +1,12 @@
+{
+  "projectId": "sst-catalog",
+  "appId": "1:552075506694:web:afe66a557bd41f425f3f87",
+  "apiKey": "AIzaSyAtMptjqY5aNdUM31dTVGsSEgXdeVaYsqY",
+  "authDomain": "sst-catalog.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "sst-catalog.firebasestorage.app",
+  "messagingSenderId": "552075506694",
+  "measurementId": "G-T161R59DVX",
+  "oAuthClientId": "",
+  "recaptchaSiteKey": ""
+}
