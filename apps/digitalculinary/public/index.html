@@ -6093,7 +6093,6 @@ git push -u origin main</pre>
         showOrderPlatformMenu: false,
         showPlatformRedirectModal: false,
         platformRedirectTarget: null,
-        platformRedirectTarget: null,
         isNavMenuOpen: false,
         isProcessingPayment: false,
         isLoadingOngkir: false,
@@ -8722,7 +8721,7 @@ git push -u origin main</pre>
             this.isAdminLoggedIn = false;
             try { sessionStorage.removeItem("dapur_admin_session"); } catch (e) {}
 
-            /* /* /* /* window.location.href = '/kasir' */ */; */ */
+            
             return;
           }
 
@@ -8766,7 +8765,7 @@ git push -u origin main</pre>
             this.isAdminLoggedIn = false;
             try { sessionStorage.removeItem("dapur_admin_session"); } catch (e) {}
 
-            /* /* /* /* window.location.href = '/kasir' */ */; */ */
+            
           } catch (err) {
             console.error('Kasir login error:', err);
             this.kasirErrorMessage = 'Gagal memproses otentikasi login. Silakan periksa koneksi Anda.';
@@ -9493,12 +9492,31 @@ git push -u origin main</pre>
 
 
 
+
+
+
 <script>
-  // PEMAKSA: Sembunyikan splash screen setelah 3 detik jika macet
-  setTimeout(function() {
-    const splash = document.getElementById("splashStatic");
-    if (splash) splash.style.display = "none";
-  }, 3000);
+  // Sembunyikan splash & buka Panel Admin
+  document.addEventListener("alpine:initialized", function() {
+    setTimeout(function() {
+      const splash = document.getElementById("splashStatic");
+      if (splash) splash.style.display = "none";
+
+      // Cek apakah ada parameter admin=1
+      if (window.location.search.includes("admin=1")) {
+        window.history.replaceState({}, document.title, "/index.html");
+        const rootEl = document.querySelector("[x-data]");
+        if (rootEl && window.Alpine) {
+          const data = window.Alpine.$data(rootEl);
+          if (data) {
+            data.isAdminLoggedIn = true;
+            data.isAdminPanelOpen = true;
+            data.isLoginGateOpen = false;
+          }
+        }
+      }
+    }, 1000);
+  });
 </script>
 
 </body>
