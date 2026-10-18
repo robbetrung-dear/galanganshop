@@ -134,7 +134,7 @@ export const AdminModal: React.FC = () => {
       setPasswordInput('Dear2226');
       setLoginError('');
       setIsResetVerificationOpen(false);
-    } catch (err: any) {
+            // Redirect to admin dashboard after successful verification
       setResetVerificationError(`Gagal memverifikasi: ${err?.message || err}`);
     } finally {
       setIsResettingLoading(false);

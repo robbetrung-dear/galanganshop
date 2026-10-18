@@ -1,0 +1,84 @@
+SST CATALOG - ADMIN FEATURES FEATURE COMPLETE LIST
+
+1. AUTHENTICATION & ACCESS CONTROL
+   - Admin role-based access control (super_admin vs regular admin)
+   - Password-protected admin panel login
+   - Password change & reset functionality
+   - Restricted passwords for limited-admin access
+   - Default super admin password: "Dear2226"
+   - Password verification with answer "2226" for reset
+
+2. PRODUCT & CSV MANAGEMENT
+   - Bulk import products from CSV/JSON files
+   - CSV upload with drag & drop support
+   - Automatic product data normalization & validation
+   - Manual product CRUD (Create, Read, Update, Delete)
+   - Product search/filter by name, merk, kategori
+   - Export products to CSV or JSON format
+   - Reset to default/demo data
+   - Bulk import with "replace existing products" option
+
+3. APPEARANCE & BRANDING (Tampilan & Brand)
+   - Primary color/brand color configuration (hex code)
+   - Banner color opacity transparency slider (0-100%)
+   - Store name & slogan editing
+   - WhatsApp admin phone number configuration
+   - Logo URL & size configuration (width/height in px)
+   - Hero title & subtitle editing
+   - Hero banner media (image/video URL) with live preview
+   - Footer text configuration (4 columns)
+   - Footer column titles (Navigasi Cepat, Kategori Unggulan, Jam Operasional)
+   - Footer bottom text & copyright configuration
+   - Popular categories selection for banner & footer display
+
+4. CATEGORY MANAGEMENT
+   - Manage icon & description per category
+   - Automatic category detection from CSV products
+   - URL icon/foto sampul kategori configuration
+   - Deskripsi singkat per kategori
+   - Product count per category display
+
+5. INFO & TREND CMS
+   - Manage articles/blog posts
+   - Title, ringkasan (summary), konten (content) editing
+   - Image URL & PDF attachment per article
+   - Tag & penulis (author) assignment
+   - Article edit & delete functionality
+   - Real-time display as floating toast notifications
+
+6. STORE PROFILE & MEDSOS
+   - Edit konteks toko/sejarah singkat
+   - Visi & Misi configuration
+   - Jam operasional (operating hours)
+   - Jadwal pengiriman (delivery schedule)
+   - Alamat kantor/gudang
+   - Telepon/call center
+   - Email resmi
+   - Media sosial links: Instagram, Facebook, TikTok, Tokopedia, Shopee
+   - Galeri media management (max 10 items)
+   - PDF document upload for brochures
+
+7. NOTIFICATIONS & BROADCASTS
+   - Real-time broadcast notifications (floating toast)
+   - Notification types: stok, promo, info, berita, tips
+   - Add new broadcast messages
+   - Toggle active/inactive status per notification
+   - Delete notifications
+
+8. SECURITY & ACCESS MANAGEMENT
+   - Admin password change form
+   - Password strength verification (old + new + confirm)
+   - Manage restricted passwords (limited admin access)
+   - Add/remove restricted passwords
+   - Security information display
+
+9. FIREBASE & CLOUDFLARE INTEGRATION
+   - Firebase project ID & database ID management
+   - Custom Firebase config via localStorage or environment variables
+   - Connection status indicator (Default Applet vs Custom Firebase)
+   - Deploy guide panduan Cloudflare Pages
+
+10. DEPLOY GUIDE
+    - Cloudflare Pages deployment configuration
+    - Static site ready branding
+    - Vite configuration for production build

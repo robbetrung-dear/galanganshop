@@ -1,0 +1,109 @@
+DIGITALCULINARY - ADMIN FEATURES FEATURE COMPLETE LIST
+
+1. AUTHENTICATION & ACCESS CONTROL
+   - Kasir authentication via PIN SHA-256 hashing
+   - Secure login endpoint: POST /kasir-auth
+   - Rate limiting: Max 5 failed attempts per IP per 15 minutes
+   - Default dev kasir accounts (ALLOW_DEFAULT_KASIR=true)
+   - Firebase Realtime Database user lookup for credential verification
+   - Shift generation format: S-{YYYY-MM-DD}-{HHMMSS}
+   - Last login tracking per kasir user
+
+2. ORDER & TRANSACTION MANAGEMENT
+   - Pending orders retrieval (orders not yet reconciled)
+   - Orders listing with filters (status, date, kasir)
+   - Single order detail view
+   - Order status update (Pending → Processed → Sent → Selesai)
+   - Transaction reconciliation to POS shifts
+   - Bulk reconcile orders to POS transactions
+   - Order search and filtering capabilities
+
+3. PAYMENT GATEWAY INTEGRATION
+   - Midtrans Snap API integration (QRIS only, no credit cards)
+   - Dynamic QR code generation for payments
+   - Sandbox & production mode support
+   - Payment status polling endpoint
+   - Webhook verification with SHA-512 signature validation
+   - Midtrans Server Key configuration via environment variables
+   - Mock mode for testing before live deployment
+
+4. ONGKIR / SHIPPING RATES
+   - Biteship API proxy for 7 kurir horizontal comparison
+   - Supported couriers: GoSend, GrabExpress, J&T, SiCepat, AnterAja, POS, Ninja
+   - Rate calculation based on weight and destination
+   - Fallback default rates when Biteship API not configured
+   - Ongkir endpoint: POST /ongkir or GET /api/ongkir
+
+5. INVENTORY & STOCK MANAGEMENT
+   - In-memory inventory store with countable/uncountable items
+   - Item management: CRUD operations for inventory items
+   - Recipe/composition storage per menu item
+   - Menu stock calculation based on ingredient availability
+   - Low stock detection & minimum stock threshold
+   - Unit conversion (kg↔gram, liter↔ml)
+   - Inventory deduction when orders processed
+   - Inventory logs tracking for auditing
+
+6. ACCOUNTING & FINANCIAL REPORTS
+   - Profit & Loss (Laba Rugi) report generation
+   - Monthly P&L with periode YYYY-MM format
+   - Revenue breakdown: Penjualan POS + Penjualan Catering
+   - HPP (Harga Pokok Penjualan) calculation: Bahan Baku
+   - Operating expenses: Gaji, Sewa, Listrik/Air, Marketing, Kurir
+   - Net profit margin calculation
+   - PDF report generation (A4 format, Base64 encoded)
+   - COA (Chart of Accounts) management
+   - Journal entries & general ledger tracking
+   - Daily, weekly, and monthly summaries
+   - Cash flow analysis (cash in vs cash out)
+
+7. SUPPLIER & KONSINYASI MANAGEMENT
+   - Supplier database management (CRUD)
+   - Barang konsinyasi tracking (receive, settlement, return)
+   - Supplier receive recording with items & total value
+   - Konsinyasi settlement payment processing
+   - Barang retur/return processing
+   - Supplier contact & address management
+
+8. NOTIFICATIONS & WA PROXY
+   - Send WhatsApp notifications via API
+   - Phone number formatting (08 → 62)
+   - Template-based message sending
+   - Notification logging & history tracking
+   - WA link generation for direct messaging
+
+9. CATEGORY & MENU MANAGEMENT
+   - Menu categories management (CRUD)
+   - Menu items management (CRUD) with pricing
+   - Menu recipe composition (ingredients per menu)
+   - Category listing with icons
+
+10. POS & SHIFT MANAGEMENT
+    - Shift opening/closing functionality
+    - Shift history (up to 30 recent shifts)
+    - Per-kasir shift tracking
+    - Daily sales summary per shift
+    - Cash sales, QRIS sales, transfer/ewallet breakdown
+    - Transaction counting per shift
+
+11. ANALYTICS & DASBOR
+    - Real-time analytics dashboard
+    - Omset (revenue) KPI tracking
+    - AOV (Average Order Value) calculation
+    - Grafik interaktif (Chart.js): 7hari & 30hari tren
+    - Donut chart: kontribusi kategori penjualan
+    - POS Kasir interface: status pesanan control
+    - Audit log tracking for transaction changes
+
+12. WEBHOOK & KEAMANAN
+    - Midtrans webhook SHA-512 signature verification
+    - Fraud & spoofing prevention
+    - Transaction status update automation
+    - Audit logging for all transactions
+
+13. DEPLOY & ENVIRONMENT CONFIGURATION
+    - Cloudflare Pages Functions deployment
+    - Environment variables: MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION, BITESHIP_API_KEY, FIREBASE_DATABASE_URL, FIREBASE_DATABASE_SECRET, ALLOW_DEFAULT_KASIR
+    - Firebase Realtime Database setup & rules
+    - Wrangler.toml configuration for Cloudflare Pages
+    - Static site deployment to *.pages.dev
