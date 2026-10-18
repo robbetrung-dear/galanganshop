@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Membuka Panel Admin...</title>
+  <script>
+    try {
+      sessionStorage.setItem('dapur_login_gate', 'true');
+      sessionStorage.setItem('dapur_admin_session', 'true');
+      sessionStorage.setItem('dapur_kasir_session', JSON.stringify({ username: 'owner', role: 'owner' }));
+      window.location.replace('/index.html?admin=1');
+    } catch(e) { console.error(e); }
+  </script>
+</head>
+<body>
+  <p>Membuka Panel Admin...</p>
+</body>
+</html>

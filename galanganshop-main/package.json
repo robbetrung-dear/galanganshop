@@ -1,0 +1,11 @@
+{
+  "name": "galanganshop",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev:digitalculinary": "pnpm --filter digitalculinary dev",
+    "dev:sst-catalog": "pnpm --filter sst-catalog dev",
+    "build:sst-catalog": "pnpm --filter sst-catalog build"
+  }
+}

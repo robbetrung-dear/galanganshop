@@ -1,0 +1,8 @@
+{
+  "name": "GalanganShop - POS Shop Suite",
+  "description": "Modern All-in-One Retail Shop Suite with Storefront Catalog, POS Kasir Pintar, Accounting, and Unified Master Admin Panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
