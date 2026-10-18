@@ -63,7 +63,7 @@ export const AdminModal: React.FC = () => {
 
   // Active admin tab
   const [adminTab, setAdminTab] = useState<
-    'tampilan' | 'produk-csv' | 'kategori' | 'info-trend' | 'profil-toko' | 'notifikasi' | 'keamanan' | 'firebase' | 'deploy-guide'
+    'tampilan' | 'produk-csv' | 'kategori' | 'info-trend' | 'profil-toko' | 'notifikasi' | 'keamanan' | 'firebase' | 'deploy-guide' | 'transaksi' | 'inventory' | 'laporan' | 'supplier'
   >('produk-csv');
 
   // Password change state
@@ -134,7 +134,8 @@ export const AdminModal: React.FC = () => {
       setPasswordInput('Dear2226');
       setLoginError('');
       setIsResetVerificationOpen(false);
-            // Redirect to admin dashboard after successful verification
+    } catch (err: any) {
+      // Redirect to admin dashboard after successful verification
       setResetVerificationError(`Gagal memverifikasi: ${err?.message || err}`);
     } finally {
       setIsResettingLoading(false);
@@ -227,7 +228,7 @@ export const AdminModal: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base sm:text-lg">Panel Kendali Admin & CSV</h3>
+                <h3 className="font-bold text-base sm:text-lg">Panel Kendali Admin Galangan Shop</h3>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
                   v2.0 Cloudflare Static Ready
                 </span>
@@ -381,6 +382,10 @@ export const AdminModal: React.FC = () => {
                 { id: 'keamanan', label: '7. Keamanan & Akses', icon: Key, superAdminOnly: true },
                 { id: 'firebase', label: '8. Database & Firebase', icon: Database, superAdminOnly: true },
                 { id: 'deploy-guide', label: '9. Panduan Cloudflare', icon: HelpCircle, superAdminOnly: true },
+                { id: 'transaksi', label: '10. Transaksi', icon: Sparkles, superAdminOnly: false },
+                { id: 'inventory', label: '11. Inventory', icon: Database, superAdminOnly: false },
+                { id: 'laporan', label: '12. Laporan', icon: FileSpreadsheet, superAdminOnly: false },
+                { id: 'supplier', label: '13. Supplier', icon: Building2, superAdminOnly: false },
               ].filter(tab => adminRole === 'super_admin' || !tab.superAdminOnly).map((tab) => {
                 const Icon = tab.icon;
                 const isActive = adminTab === tab.id;
@@ -2170,6 +2175,32 @@ export const AdminModal: React.FC = () => {
                       </ul>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* NEW TABS from DigitalCulinary / GalanganShop integration */}
+              {adminTab === 'transaksi' && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
+                  <h4 className="text-lg font-black text-slate-900">Transaksi Penjualan</h4>
+                  <p className="text-xs text-slate-500 mt-1">Fitur integrasi transaksi penjualan dari DigitalCulinary.</p>
+                </div>
+              )}
+              {adminTab === 'inventory' && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
+                  <h4 className="text-lg font-black text-slate-900">Manajemen Inventory</h4>
+                  <p className="text-xs text-slate-500 mt-1">Fitur manajemen stok dan inventory dari DigitalCulinary.</p>
+                </div>
+              )}
+              {adminTab === 'laporan' && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
+                  <h4 className="text-lg font-black text-slate-900">Laporan Penjualan</h4>
+                  <p className="text-xs text-slate-500 mt-1">Fitur laporan penjualan dan analitik dari DigitalCulinary.</p>
+                </div>
+              )}
+              {adminTab === 'supplier' && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
+                  <h4 className="text-lg font-black text-slate-900">Manajemen Supplier</h4>
+                  <p className="text-xs text-slate-500 mt-1">Fitur pengelolaan supplier dan vendor dari DigitalCulinary.</p>
                 </div>
               )}
             </div>
