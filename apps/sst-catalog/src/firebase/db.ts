@@ -1,6 +1,6 @@
 import { db } from './config';
 import { collection, doc, setDoc, getDoc, getDocs, onSnapshot, writeBatch, deleteDoc, query, limit } from 'firebase/firestore';
-import { Product, CategoryMeta, InfoTrendItem, StoreProfile, SiteSettings, StockNotification } from '../types';
+import { Product, CategoryMeta, InfoTrendItem, StoreProfile, SiteSettings, StockNotification, Transaksi, InventoryLog, Supplier } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_INFO_TRENDS, INITIAL_STORE_PROFILE, INITIAL_SITE_SETTINGS, INITIAL_NOTIFICATIONS } from '../data/initialData';
 import { sanitizeProductData } from '../utils/csvHelper';
 
@@ -55,6 +55,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 // References
 const productsRef = collection(db, 'products');
 const storeDataRef = collection(db, 'storeData');
+const ordersRef = collection(db, 'orders');
+const inventoryLogsRef = collection(db, 'inventoryLogs');
+const suppliersRef = collection(db, 'suppliers');
 
 // Safe doc ID helper
 export const sanitizeDocId = (id: string | number): string => {
@@ -228,10 +231,90 @@ export const resetDbToDefault = async () => {
   for (let i = 0; i < cleanProducts.length; i += 400) {
     const productBatch = writeBatch(db);
     const chunk = cleanProducts.slice(i, i + 400);
-    chunk.forEach(product => {
+    chunk.forEach((product) => {
       const pDoc = doc(productsRef, sanitizeDocId(product.id));
       productBatch.set(pDoc, product);
     });
     await productBatch.commit();
   }
+};
+
+/* ================================================================
+   Master Admin — Orders (Transaksi), Inventory Logs, Suppliers
+   Real-time onSnapshot listeners + mutations (implementation_plan.md)
+   ================================================================ */
+
+export const listenToOrders = (callback: (orders: Transaksi[]) => void) => {
+  return onSnapshot(
+    ordersRef,
+    (snapshot) => {
+      const orders = snapshot.docs.map((d) => d.data() as Transaksi);
+      callback(orders);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'orders');
+    }
+  );
+};
+
+export const listenToInventoryLogs = (callback: (logs: InventoryLog[]) => void) => {
+  return onSnapshot(
+    inventoryLogsRef,
+    (snapshot) => {
+      const logs = snapshot.docs.map((d) => d.data() as InventoryLog);
+      callback(logs);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'inventoryLogs');
+    }
+  );
+};
+
+export const listenToSuppliers = (callback: (suppliers: Supplier[]) => void) => {
+  return onSnapshot(
+    suppliersRef,
+    (snapshot) => {
+      const suppliers = snapshot.docs.map((d) => d.data() as Supplier);
+      callback(suppliers);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'suppliers');
+    }
+  );
+};
+
+export const saveOrderToDb = async (order: Transaksi) => {
+  const docId = sanitizeDocId(order.id || `TRX-${Date.now()}`);
+  const clean: Transaksi = { ...order, id: docId, updatedAt: new Date().toISOString() };
+  await setDoc(doc(ordersRef, docId), clean);
+};
+
+export const deleteOrderFromDb = async (id: string | number) => {
+  await deleteDoc(doc(ordersRef, sanitizeDocId(id)));
+};
+
+export const saveInventoryLogToDb = async (log: InventoryLog) => {
+  const docId = sanitizeDocId(log.id || `INV-${Date.now()}`);
+  const clean: InventoryLog = { ...log, id: docId, updatedAt: new Date().toISOString() };
+  await setDoc(doc(inventoryLogsRef, docId), clean);
+};
+
+export const deleteInventoryLogFromDb = async (id: string | number) => {
+  await deleteDoc(doc(inventoryLogsRef, sanitizeDocId(id)));
+};
+
+export const saveSupplierToDb = async (supplier: Supplier) => {
+  const docId = sanitizeDocId(supplier.id || `SUP-${Date.now()}`);
+  const now = new Date().toISOString();
+  const clean: Supplier = {
+    ...supplier,
+    id: docId,
+    createdAt: supplier.createdAt || now,
+    updatedAt: now,
+  };
+  await setDoc(doc(suppliersRef, docId), clean);
+};
+
+export const deleteSupplierFromDb = async (id: string | number) => {
+  await deleteDoc(doc(suppliersRef, sanitizeDocId(id)));
 };

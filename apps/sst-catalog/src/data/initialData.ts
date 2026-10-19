@@ -392,5 +392,5 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
   logoHeight: 48,
   footerText: 'Mitra terpercaya pengadaan barang teknik industri, fabrikasi logam, konstruksi, dan keselamatan kerja skala nasional.',
   footerCopyright: '© 2026 SST Catalog. All Rights Reserved.',
-  adminPasswordHash: 'Dear2226', // Initial password as explicitly requested
+  adminPasswordHash: '582ca0553e7abdac990e8c761fa3c164533c6e6b49bc8bd7c4ea7c0cd4e294fb', // Default "Dear2226" — disimpan sebagai hash SHA-256 (lihat utils/authHelper.ts)
 };

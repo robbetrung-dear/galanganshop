@@ -1,16 +1,26 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { Product, CartItem, CategoryMeta, InfoTrendItem, StoreProfile, SiteSettings, StockNotification } from '../types';
+import { Product, CartItem, CategoryMeta, InfoTrendItem, StoreProfile, SiteSettings, StockNotification, Transaksi, InventoryLog, Supplier, LaporanRingkasan, LaporanHarian, TransaksiStatus } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_INFO_TRENDS, INITIAL_STORE_PROFILE, INITIAL_SITE_SETTINGS, INITIAL_NOTIFICATIONS } from '../data/initialData';
-import { 
-  listenToProducts, 
-  listenToStoreData, 
-  saveProductToDb, 
-  deleteProductFromDb, 
-  saveProductsBatch, 
-  saveStoreDataToDb, 
-  resetDbToDefault, 
-  initializeFirebaseData
+import {
+  listenToProducts,
+  listenToStoreData,
+  listenToOrders,
+  listenToInventoryLogs,
+  listenToSuppliers,
+  saveProductToDb,
+  deleteProductFromDb,
+  saveProductsBatch,
+  saveStoreDataToDb,
+  resetDbToDefault,
+  initializeFirebaseData,
+  saveOrderToDb,
+  deleteOrderFromDb,
+  saveInventoryLogToDb,
+  deleteInventoryLogFromDb,
+  saveSupplierToDb,
+  deleteSupplierFromDb,
 } from '../firebase/db';
+import { sha256Hash, isSha256Hash, DEFAULT_ADMIN_PASSWORD_HASH } from '../utils/authHelper';
 
 const levenshtein = (a: string, b: string): number => {
   if (a.length === 0) return b.length;
@@ -101,8 +111,23 @@ interface CatalogContextType {
   deleteNotification: (id: string) => void;
   toggleNotification: (id: string) => void;
 
+  // Master Admin — Transaksi / Inventory / Supplier (implementation_plan.md)
+  orders: Transaksi[];
+  inventoryLogs: InventoryLog[];
+  suppliers: Supplier[];
+  laporanRingkasan: LaporanRingkasan;
+
+  addOrder: (order: Omit<Transaksi, 'createdAt' | 'updatedAt'>) => Promise<void>;
+  deleteOrder: (id: string | number) => Promise<void>;
+  updateOrderStatus: (id: string | number, status: TransaksiStatus) => Promise<void>;
+  addInventoryLog: (log: Omit<InventoryLog, 'createdAt' | 'updatedAt'>) => Promise<void>;
+  deleteInventoryLog: (id: string | number) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateSupplier: (supplier: Supplier) => Promise<void>;
+  deleteSupplier: (id: string | number) => Promise<void>;
+
   // Security
-  loginAdmin: (password: string) => boolean;
+  loginAdmin: (password: string) => Promise<boolean>;
   logoutAdmin: () => void;
   changeAdminPassword: (oldPass: string, newPass: string) => Promise<{ success: boolean; message: string }>;
   resetAdminPassword: () => Promise<{ success: boolean; message: string }>;
@@ -163,6 +188,11 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [activeToast, setActiveToast] = useState<string | null>(null);
 
+  // Master Admin — Transaksi / Inventory / Supplier (Firestore-synced)
+  const [orders, setOrders] = useState<Transaksi[]>([]);
+  const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
   const showToast = (msg: string) => {
     setActiveToast(msg);
     setTimeout(() => {
@@ -178,6 +208,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     let unsubNotifications: (() => void) | undefined;
     let unsubProfile: (() => void) | undefined;
     let unsubSettings: (() => void) | undefined;
+    let unsubOrders: (() => void) | undefined;
+    let unsubInventoryLogs: (() => void) | undefined;
+    let unsubSuppliers: (() => void) | undefined;
 
     const init = async () => {
       // 1. Immediately subscribe to listeners so UI receives live updates without waiting
@@ -187,6 +220,11 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       unsubNotifications = listenToStoreData<StockNotification[]>('notifications', setNotifications, true);
       unsubProfile = listenToStoreData<StoreProfile>('storeProfile', setStoreProfile, false);
       unsubSettings = listenToStoreData<SiteSettings>('siteSettings', setSiteSettings, false);
+
+      // Master Admin — real-time Firestore listeners (implementation_plan.md)
+      unsubOrders = listenToOrders(setOrders);
+      unsubInventoryLogs = listenToInventoryLogs(setInventoryLogs);
+      unsubSuppliers = listenToSuppliers(setSuppliers);
 
       // 2. Perform background setup check if needed
       initializeFirebaseData().catch((err) => {
@@ -203,6 +241,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (unsubNotifications) unsubNotifications();
       if (unsubProfile) unsubProfile();
       if (unsubSettings) unsubSettings();
+      if (unsubOrders) unsubOrders();
+      if (unsubInventoryLogs) unsubInventoryLogs();
+      if (unsubSuppliers) unsubSuppliers();
     };
   }, []);
 
@@ -286,6 +327,45 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }, [products]);
+
+  // Laporan penjualan (Accounting) — dihitung secara reaktif dari data transaksi Firestore
+  const laporanRingkasan = useMemo<LaporanRingkasan>(() => {
+    const byDate = new Map<string, { jumlah: number; total: number }>();
+    const perStatus: Record<TransaksiStatus, number> = { pending: 0, selesai: 0, batal: 0 };
+    const produkMap = new Map<string, { nama: string; terjual: number; pendapatan: number }>();
+    let totalPendapatan = 0;
+
+    for (const trx of orders) {
+      const tgl = String(trx.tanggal || '').slice(0, 10);
+      const cur = byDate.get(tgl) || { jumlah: 0, total: 0 };
+      byDate.set(tgl, { jumlah: cur.jumlah + 1, total: cur.total + Number(trx.total || 0) });
+      perStatus[trx.status] = (perStatus[trx.status] || 0) + 1;
+      if (trx.status === 'selesai') totalPendapatan += Number(trx.total || 0);
+      for (const item of trx.items) {
+        const curP = produkMap.get(item.nama) || { nama: item.nama, terjual: 0, pendapatan: 0 };
+        produkMap.set(item.nama, {
+          nama: item.nama,
+          terjual: curP.terjual + Number(item.jumlah || 0),
+          pendapatan: curP.pendapatan + Number(item.subtotal || 0),
+        });
+      }
+    }
+
+    const harian: LaporanHarian[] = Array.from(byDate.entries())
+      .map(([tanggal, v]) => ({ tanggal, jumlahTransaksi: v.jumlah, totalPendapatan: v.total }))
+      .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+
+    return {
+      totalTransaksi: orders.length,
+      totalPendapatan: totalPendapatan,
+      totalSeluruhTransaksi: orders.reduce((sum, t) => sum + Number(t.total || 0), 0),
+      perStatus,
+      produkTerlaris: Array.from(produkMap.values())
+        .sort((a, b) => b.terjual - a.terjual)
+        .slice(0, 10),
+      harian,
+    };
+  }, [orders]);
 
   // Filtered and Sorted Products
   const filteredProducts = useMemo(() => {
@@ -482,37 +562,48 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCart([]);
   };
 
-  // Product CRUD
+  // Product CRUD — optimistic local state, rollback on Firestore failure
   const addProduct = async (product: Product) => {
+    const prev = products;
+    setProducts([product, ...prev]);
     try {
       await saveProductToDb(product);
       showToast(`✅ Produk baru ditambahkan: ${product.nama}`);
     } catch (e) {
+      setProducts(prev);
       showToast(`❌ Gagal menyimpan: ${e}`);
     }
   };
 
   const updateProduct = async (updated: Product) => {
+    const prev = products;
+    setProducts((curr) => curr.map((p) => (String(p.id) === String(updated.id) ? updated : p)));
     try {
       await saveProductToDb(updated);
       showToast(`✅ Data produk ${updated.nama} berhasil diperbarui.`);
     } catch (e) {
+      setProducts(prev);
       showToast(`❌ Gagal memperbarui: ${e}`);
     }
   };
 
   const deleteProduct = async (id: string | number) => {
+    const prev = products;
+    setProducts((curr) => curr.filter((p) => String(p.id) !== String(id)));
     try {
       await deleteProductFromDb(id);
       showToast('🗑️ Produk berhasil dihapus dari katalog.');
     } catch (e) {
+      setProducts(prev);
       showToast(`❌ Gagal menghapus: ${e}`);
     }
   };
 
   const bulkImportProducts = async (newProducts: Product[], replace = false) => {
+    const prev = products;
     try {
       showToast(`⏳ Menyimpan ${newProducts.length} produk ke database...`);
+      setProducts(replace ? [...newProducts] : [...newProducts, ...products]);
       await saveProductsBatch(newProducts, replace);
       if (replace) {
         showToast(`📥 Berhasil mengimpor ${newProducts.length} produk baru (menggantikan katalog lama).`);
@@ -520,6 +611,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showToast(`📥 Berhasil menambahkan ${newProducts.length} produk ke dalam katalog.`);
       }
     } catch (e) {
+      setProducts(prev);
       showToast(`❌ Gagal import massal: ${e}`);
     }
   };
@@ -534,119 +626,171 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Site Settings
+  // Site Settings — optimistic local state, rollback on Firestore failure
   const updateSiteSettings = async (newSettings: Partial<SiteSettings>) => {
+    const prev = siteSettings;
     try {
       const updated = { ...siteSettings, ...newSettings };
+      setSiteSettings(updated);
       await saveStoreDataToDb('siteSettings', updated, false);
       showToast('⚙️ Pengaturan tampilan berhasil disimpan.');
     } catch (e) {
+      setSiteSettings(prev);
       showToast(`❌ Gagal menyimpan pengaturan: ${e}`);
     }
   };
 
   const updateStoreProfile = async (newProfile: Partial<StoreProfile>) => {
+    const prev = storeProfile;
     try {
       const updated = { ...storeProfile, ...newProfile };
+      setStoreProfile(updated);
       await saveStoreDataToDb('storeProfile', updated, false);
       showToast('🏢 Profil toko berhasil diperbarui.');
     } catch (e) {
+      setStoreProfile(prev);
       showToast(`❌ Gagal memperbarui profil: ${e}`);
     }
   };
 
   const updateCategoryMeta = async (categoryName: string, iconUrl: string, deskripsi: string) => {
+    const safeName = String(categoryName || '').trim();
+    if (!safeName) return;
+    const prev = categoriesMeta;
+    let next = Array.isArray(categoriesMeta) ? [...categoriesMeta] : [];
+    const idx = next.findIndex(
+      (c) => c && typeof c.nama === 'string' && c.nama.trim().toLowerCase() === safeName.toLowerCase()
+    );
+    if (idx >= 0) {
+      next[idx] = { nama: safeName, iconUrl: iconUrl || '', deskripsi: deskripsi || '' };
+    } else {
+      next.push({ nama: safeName, iconUrl: iconUrl || '', deskripsi: deskripsi || '' });
+    }
+    setCategoriesMeta(next);
     try {
-      const safeName = String(categoryName || '').trim();
-      if (!safeName) return;
-
-      let next = Array.isArray(categoriesMeta) ? [...categoriesMeta] : [];
-      const idx = next.findIndex(
-        (c) => c && typeof c.nama === 'string' && c.nama.trim().toLowerCase() === safeName.toLowerCase()
-      );
-      if (idx >= 0) {
-        next[idx] = { nama: safeName, iconUrl: iconUrl || '', deskripsi: deskripsi || '' };
-      } else {
-        next.push({ nama: safeName, iconUrl: iconUrl || '', deskripsi: deskripsi || '' });
-      }
       await saveStoreDataToDb('categories', next, true);
       showToast(`📁 Info kategori "${safeName}" berhasil disimpan.`);
     } catch (e) {
+      setCategoriesMeta(prev);
       showToast(`❌ Gagal menyimpan kategori: ${e}`);
     }
   };
 
   const addInfoTrend = async (item: InfoTrendItem) => {
+    const prev = infoTrends;
+    const next = [item, ...infoTrends];
+    setInfoTrends(next);
     try {
-      const next = [item, ...infoTrends];
       await saveStoreDataToDb('infoTrends', next, true);
       showToast(`📰 Artikel Info & Trend "${item.judul}" berhasil diterbitkan.`);
     } catch (e) {
+      setInfoTrends(prev);
       showToast(`❌ Gagal menerbitkan artikel: ${e}`);
     }
   };
 
   const updateInfoTrend = async (item: InfoTrendItem) => {
+    const prev = infoTrends;
+    const next = infoTrends.map((it) => (it.id === item.id ? item : it));
+    setInfoTrends(next);
     try {
-      const next = infoTrends.map((it) => (it.id === item.id ? item : it));
       await saveStoreDataToDb('infoTrends', next, true);
       showToast(`📰 Artikel "${item.judul}" berhasil diperbarui.`);
     } catch (e) {
+      setInfoTrends(prev);
       showToast(`❌ Gagal memperbarui artikel: ${e}`);
     }
   };
 
   const deleteInfoTrend = async (id: string) => {
+    const prev = infoTrends;
+    const next = infoTrends.filter((it) => it.id !== id);
+    setInfoTrends(next);
     try {
-      const next = infoTrends.filter((it) => it.id !== id);
       await saveStoreDataToDb('infoTrends', next, true);
       showToast('🗑️ Artikel berhasil dihapus.');
     } catch (e) {
+      setInfoTrends(prev);
       showToast(`❌ Gagal menghapus artikel: ${e}`);
     }
   };
 
   const addNotification = async (notif: StockNotification) => {
+    const prev = notifications;
+    const next = [notif, ...notifications];
+    setNotifications(next);
     try {
-      const next = [notif, ...notifications];
       await saveStoreDataToDb('notifications', next, true);
       showToast('📢 Notifikasi siaran baru ditambahkan.');
     } catch (e) {
+      setNotifications(prev);
       showToast(`❌ Gagal menambahkan notifikasi: ${e}`);
     }
   };
 
   const deleteNotification = async (id: string) => {
+    const prev = notifications;
+    const next = notifications.filter((n) => n.id !== id);
+    setNotifications(next);
     try {
-      const next = notifications.filter((n) => n.id !== id);
       await saveStoreDataToDb('notifications', next, true);
     } catch (e) {
+      setNotifications(prev);
       showToast(`❌ Gagal menghapus notifikasi: ${e}`);
     }
   };
 
   const toggleNotification = async (id: string) => {
+    const prev = notifications;
+    const next = notifications.map((n) => (n.id === id ? { ...n, aktif: !n.aktif } : n));
+    setNotifications(next);
     try {
-      const next = notifications.map((n) => (n.id === id ? { ...n, aktif: !n.aktif } : n));
       await saveStoreDataToDb('notifications', next, true);
     } catch (e) {
+      setNotifications(prev);
       showToast(`❌ Gagal toggle notifikasi: ${e}`);
     }
   };
 
-  // Admin Auth
-  const loginAdmin = (pass: string): boolean => {
-    if (pass === siteSettings.adminPasswordHash) {
+  // Admin Auth — SHA-256 hash verification (implementation_plan.md)
+  const loginAdmin = async (pass: string): Promise<boolean> => {
+    const hashed = await sha256Hash(pass);
+    const storedSuper = siteSettings.adminPasswordHash;
+
+    let superOk = false;
+    if (isSha256Hash(storedSuper)) {
+      superOk = hashed === storedSuper;
+    } else if (storedSuper && pass === storedSuper) {
+      // Migrasi password plaintext lama (Firestorelama) → hash SHA-256
+      superOk = true;
+      const updated = { ...siteSettings, adminPasswordHash: hashed };
+      setSiteSettings(updated);
+      void saveStoreDataToDb('siteSettings', updated, false);
+    }
+
+    if (superOk) {
       setAdminRole('super_admin');
       sessionStorage.setItem(LOCAL_STORAGE_KEYS.ADMIN_AUTH, 'super_admin');
       showToast('🔓 Login Super Admin Berhasil. Selamat datang!');
       return true;
-    } else if (siteSettings.restrictedPasswords?.includes(pass)) {
-      setAdminRole('admin');
-      sessionStorage.setItem(LOCAL_STORAGE_KEYS.ADMIN_AUTH, 'admin');
-      showToast('🔓 Login Admin Terbatas Berhasil. Selamat datang!');
-      return true;
     }
+
+    const restricted = Array.isArray(siteSettings.restrictedPasswords) ? siteSettings.restrictedPasswords : [];
+    for (const stored of restricted) {
+      let ok = false;
+      if (isSha256Hash(stored)) {
+        ok = hashed === stored;
+      } else if (stored && pass === stored) {
+        ok = true;
+      }
+      if (ok) {
+        setAdminRole('admin');
+        sessionStorage.setItem(LOCAL_STORAGE_KEYS.ADMIN_AUTH, 'admin');
+        showToast('🔓 Login Admin Terbatas Berhasil. Selamat datang!');
+        return true;
+      }
+    }
+
     showToast('❌ Password admin salah.');
     return false;
   };
@@ -658,14 +802,21 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const changeAdminPassword = async (oldPass: string, newPass: string) => {
-    if (oldPass !== siteSettings.adminPasswordHash) {
+    const stored = siteSettings.adminPasswordHash;
+    let oldOk = false;
+    if (isSha256Hash(stored)) {
+      oldOk = (await sha256Hash(oldPass)) === stored;
+    } else {
+      oldOk = oldPass === stored;
+    }
+    if (!oldOk) {
       return { success: false, message: 'Password lama tidak sesuai.' };
     }
     if (!newPass || newPass.length < 4) {
       return { success: false, message: 'Password baru minimal 4 karakter.' };
     }
     try {
-      const updated = { ...siteSettings, adminPasswordHash: newPass };
+      const updated = { ...siteSettings, adminPasswordHash: await sha256Hash(newPass) };
       setSiteSettings(updated);
       await saveStoreDataToDb('siteSettings', updated, false);
       return { success: true, message: 'Password Admin berhasil diubah!' };
@@ -677,15 +828,152 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const resetAdminPassword = async () => {
     try {
       const defaultPass = 'Dear2226';
-      const updated = { ...siteSettings, adminPasswordHash: defaultPass };
+      const updated = { ...siteSettings, adminPasswordHash: await sha256Hash(defaultPass) };
       setSiteSettings(updated);
       await saveStoreDataToDb('siteSettings', updated, false);
-      showToast('🔄 Password Super Admin berhasil direset ke bawaan');
+      showToast('🔄 Password Super Admin berhasil direset ke bawaan (hash SHA-256).');
       return { success: true, message: 'Password Super Admin berhasil direset.' };
     } catch (e) {
       // Still set local state fallback if database fails
-      setSiteSettings((prev) => ({ ...prev, adminPasswordHash: 'Dear2226' }));
+      setSiteSettings((prev) => ({ ...prev, adminPasswordHash: DEFAULT_ADMIN_PASSWORD_HASH }));
       return { success: true, message: 'Password Super Admin berhasil direset (Lokal).' };
+    }
+  };
+
+  // ================================================================
+  // Master Admin Actions — Transaksi / Inventory / Supplier
+  // Optimistic updates + Firestore persistence (implementation_plan.md)
+  // ================================================================
+
+  const addOrder = async (order: Omit<Transaksi, 'createdAt' | 'updatedAt'>): Promise<void> => {
+    const prev = orders;
+    const now = new Date().toISOString();
+    const clean: Transaksi = {
+      ...order,
+      id: order.id || `TRX-${Date.now()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setOrders((curr) => [clean, ...curr]);
+    try {
+      await saveOrderToDb(clean);
+      showToast(`✅ Transaksi ${clean.id} berhasil disimpan.`);
+    } catch (e) {
+      setOrders(prev);
+      showToast(`❌ Gagal menyimpan transaksi: ${e}`);
+    }
+  };
+
+  const deleteOrder = async (id: string | number): Promise<void> => {
+    const prev = orders;
+    setOrders((curr) => curr.filter((o) => String(o.id) !== String(id)));
+    try {
+      await deleteOrderFromDb(id);
+      showToast('🗑️ Transaksi berhasil dihapus.');
+    } catch (e) {
+      setOrders(prev);
+      showToast(`❌ Gagal menghapus transaksi: ${e}`);
+    }
+  };
+
+  const updateOrderStatus = async (id: string | number, status: TransaksiStatus): Promise<void> => {
+    const prev = orders;
+    setOrders((curr) => curr.map((o) => (String(o.id) === String(id) ? { ...o, status, updatedAt: new Date().toISOString() } : o)));
+    try {
+      const target = prev.find((o) => String(o.id) === String(id));
+      if (target) {
+        await saveOrderToDb({ ...target, status, updatedAt: new Date().toISOString() });
+      }
+      showToast(`📋 Status transaksi diubah menjadi ${status}.`);
+    } catch (e) {
+      setOrders(prev);
+      showToast(`❌ Gagal memperbarui status: ${e}`);
+    }
+  };
+
+  const addInventoryLog = async (log: Omit<InventoryLog, 'createdAt' | 'updatedAt'>): Promise<void> => {
+    const prevLogs = inventoryLogs;
+    const prevProducts = products;
+    const now = new Date().toISOString();
+    const clean: InventoryLog = {
+      ...log,
+      id: log.id || `INV-${Date.now()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setInventoryLogs((curr) => [clean, ...curr]);
+    // Optimistic stok update pada produk terkait
+    setProducts((curr) =>
+      curr.map((p) => {
+        if (String(p.id) !== String(clean.productId)) return p;
+        let nextStok = p.jumlah_stok;
+        if (clean.tipe === 'masuk') {
+          nextStok += clean.jumlah;
+        } else if (clean.tipe === 'keluar') {
+          nextStok = Math.max(0, nextStok - clean.jumlah);
+        } else if (clean.tipe === 'opname') {
+          nextStok = clean.stokSesudah;
+        }
+        return { ...p, jumlah_stok: nextStok };
+      })
+    );
+    try {
+      await saveInventoryLogToDb(clean);
+      showToast(`📦 Log inventory "${clean.namaProduk}" berhasil dicatat.`);
+    } catch (e) {
+      setInventoryLogs(prevLogs);
+      setProducts(prevProducts);
+      showToast(`❌ Gagal mencatat inventory: ${e}`);
+    }
+  };
+
+  const deleteInventoryLog = async (id: string | number): Promise<void> => {
+    const prev = inventoryLogs;
+    setInventoryLogs((curr) => curr.filter((l) => String(l.id) !== String(id)));
+    try {
+      await deleteInventoryLogFromDb(id);
+      showToast('🗑️ Log inventory dihapus.');
+    } catch (e) {
+      setInventoryLogs(prev);
+      showToast(`❌ Gagal menghapus log inventory: ${e}`);
+    }
+  };
+
+  const addSupplier = async (supplier: Omit<Supplier, 'createdAt' | 'updatedAt'>): Promise<void> => {
+    const prev = suppliers;
+    const now = new Date().toISOString();
+    const clean: Supplier = { ...supplier, id: supplier.id || `SUP-${Date.now()}`, createdAt: now, updatedAt: now };
+    setSuppliers((curr) => [clean, ...curr]);
+    try {
+      await saveSupplierToDb(clean);
+      showToast(`🏪 Supplier "${clean.nama}" berhasil ditambahkan.`);
+    } catch (e) {
+      setSuppliers(prev);
+      showToast(`❌ Gagal menyimpan supplier: ${e}`);
+    }
+  };
+
+  const updateSupplier = async (supplier: Supplier): Promise<void> => {
+    const prev = suppliers;
+    setSuppliers((curr) => curr.map((s) => (String(s.id) === String(supplier.id) ? { ...supplier, updatedAt: new Date().toISOString() } : s)));
+    try {
+      await saveSupplierToDb(supplier);
+      showToast(`🏪 Data supplier "${supplier.nama}" diperbarui.`);
+    } catch (e) {
+      setSuppliers(prev);
+      showToast(`❌ Gagal memperbarui supplier: ${e}`);
+    }
+  };
+
+  const deleteSupplier = async (id: string | number): Promise<void> => {
+    const prev = suppliers;
+    setSuppliers((curr) => curr.filter((s) => String(s.id) !== String(id)));
+    try {
+      await deleteSupplierFromDb(id);
+      showToast('🗑️ Supplier berhasil dihapus.');
+    } catch (e) {
+      setSuppliers(prev);
+      showToast(`❌ Gagal menghapus supplier: ${e}`);
     }
   };
 
@@ -729,6 +1017,10 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         totalPages,
         totalCartItems,
         totalCartPrice,
+        orders,
+        inventoryLogs,
+        suppliers,
+        laporanRingkasan,
         addToCart,
         removeFromCart,
         updateCartQuantity,
@@ -747,6 +1039,14 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addNotification,
         deleteNotification,
         toggleNotification,
+        addOrder,
+        deleteOrder,
+        updateOrderStatus,
+        addInventoryLog,
+        deleteInventoryLog,
+        addSupplier,
+        updateSupplier,
+        deleteSupplier,
         loginAdmin,
         logoutAdmin,
         changeAdminPassword,

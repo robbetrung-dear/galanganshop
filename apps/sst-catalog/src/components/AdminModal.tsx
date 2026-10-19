@@ -6,8 +6,9 @@ import {
   CheckCircle2, CloudLightning, Server, Terminal, Copy, Globe
 } from 'lucide-react';
 import { useCatalog } from '../context/CatalogContext';
-import { Product, InfoTrendItem } from '../types';
+import { Product, InfoTrendItem, TransaksiItem, TransaksiMetode, TransaksiStatus, Supplier, InventoryLog } from '../types';
 import { parseProductsFile, exportProductsToCSV, downloadFile, formatRupiah, parseCleanNumber, sanitizeProductData } from '../utils/csvHelper';
+import { sha256Hash } from '../utils/authHelper';
 import {
   currentFirebaseProjectId,
   currentDatabaseId,
@@ -48,6 +49,18 @@ export const AdminModal: React.FC = () => {
     deleteProduct,
     bulkImportProducts,
     resetToDefaultData,
+    orders,
+    inventoryLogs,
+    suppliers,
+    laporanRingkasan,
+    addOrder,
+    deleteOrder,
+    updateOrderStatus,
+    addInventoryLog,
+    deleteInventoryLog,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
     showToast,
   } = useCatalog();
 
@@ -106,12 +119,27 @@ export const AdminModal: React.FC = () => {
 
   const [newRestrictedPassword, setNewRestrictedPassword] = useState('');
 
+  // Transaksi (Orders) form state
+  const [orderItems, setOrderItems] = useState<TransaksiItem[]>([]);
+  const [newOrderCustomer, setNewOrderCustomer] = useState('');
+  const [newOrderMetode, setNewOrderMetode] = useState<TransaksiMetode>('tunai');
+
+  // Inventory log form state
+  const [invLogProductId, setInvLogProductId] = useState<string | number>('');
+  const [invLogTipe, setInvLogTipe] = useState<'masuk' | 'keluar' | 'opname' | 'retur'>('masuk');
+  const [invLogJumlah, setInvLogJumlah] = useState<number>(1);
+  const [invLogCatatan, setInvLogCatatan] = useState('');
+
+  // Supplier form state
+  const [newSupplier, setNewSupplier] = useState<{ nama: string; kontak: string; alamat: string; email: string; catatan: string }>({ nama: '', kontak: '', alamat: '', email: '', catatan: '' });
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+
   if (!isAdminOpen) return null;
 
   // Handle Login
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginAdmin(passwordInput)) {
+    if (await loginAdmin(passwordInput)) {
       setLoginError('');
       setPasswordInput('');
     } else {
@@ -212,6 +240,134 @@ export const AdminModal: React.FC = () => {
     const jsonContent = JSON.stringify(products, null, 2);
     downloadFile(jsonContent, 'produk.json', 'application/json');
     showToast('📥 File produk.json berhasil diunduh.');
+  };
+
+  const [newOrderProductId, setNewOrderProductId] = useState<string | number>('');
+  const [newOrderQty, setNewOrderQty] = useState<number>(1);
+
+  const orderTotal = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+
+  const handleAddOrderItem = () => {
+    if (!newOrderProductId) {
+      showToast('❌ Pilih produk terlebih dahulu.');
+      return;
+    }
+    const product = products.find((p) => String(p.id) === String(newOrderProductId));
+    if (!product) return;
+    const existing = orderItems.find((i) => String(i.productId) === String(product.id));
+    if (existing) {
+      setOrderItems(orderItems.map((i) =>
+        String(i.productId) === String(product.id)
+          ? { ...i, jumlah: i.jumlah + newOrderQty, subtotal: (i.jumlah + newOrderQty) * product.harga }
+          : i
+      ));
+    } else {
+      setOrderItems([...orderItems, {
+        productId: product.id,
+        nama: product.nama,
+        merk: product.merk,
+        harga: product.harga,
+        jumlah: newOrderQty,
+        subtotal: product.harga * newOrderQty,
+      }]);
+    }
+    setNewOrderQty(1);
+  };
+
+  const handleRemoveOrderItem = (productId: string | number) => {
+    setOrderItems(orderItems.filter((i) => String(i.productId) !== String(productId)));
+  };
+
+  const handleSaveOrder = async () => {
+    if (orderItems.length === 0) {
+      showToast('❌ Minimal satu item produk wajib diisi.');
+      return;
+    }
+    const total = orderItems.reduce((sum, i) => sum + i.subtotal, 0);
+    await addOrder({
+      id: `TRX-${Date.now()}`,
+      tanggal: new Date().toISOString(),
+      pelanggan: newOrderCustomer || undefined,
+      items: orderItems,
+      total,
+      metode: newOrderMetode,
+      status: 'pending',
+    });
+    setOrderItems([]);
+    setNewOrderCustomer('');
+    setNewOrderMetode('tunai');
+    setNewOrderProductId('');
+    setNewOrderQty(1);
+    showToast('🧾 Transaksi baru telah dicatat.');
+  };
+
+  const handleChangeOrderStatus = (id: string | number, status: TransaksiStatus) => {
+    void updateOrderStatus(id, status);
+  };
+
+  const hitungStokSesudah = (stokSebelum: number): number => {
+    if (invLogTipe === 'masuk') return stokSebelum + invLogJumlah;
+    if (invLogTipe === 'keluar') return Math.max(0, stokSebelum - invLogJumlah);
+    if (invLogTipe === 'opname') return invLogJumlah;
+    return stokSebelum;
+  };
+
+  const handleAddInventoryLog = async () => {
+    if (!invLogProductId) {
+      showToast('❌ Pilih produk terlebih dahulu.');
+      return;
+    }
+    const product = products.find((p) => String(p.id) === String(invLogProductId));
+    if (!product) return;
+    const stokSebelum = product.jumlah_stok;
+    const stokSesudah = hitungStokSesudah(stokSebelum);
+    const jumlahLog = invLogTipe === 'opname' ? stokSesudah - stokSebelum : invLogJumlah;
+    await addInventoryLog({
+      id: `INV-${Date.now()}`,
+      tanggal: new Date().toISOString(),
+      productId: product.id,
+      namaProduk: product.nama,
+      tipe: invLogTipe,
+      jumlah: jumlahLog,
+      stokSebelum,
+      stokSesudah,
+      catatan: invLogCatatan || undefined,
+    });
+    setInvLogProductId('');
+    setInvLogJumlah(1);
+    setInvLogCatatan('');
+    showToast('📦 Log inventory telah dicatat.');
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setNewSupplier({
+      nama: supplier.nama,
+      kontak: supplier.kontak || '',
+      alamat: supplier.alamat || '',
+      email: supplier.email || '',
+      catatan: supplier.catatan || '',
+    });
+  };
+
+  const handleSaveSupplier = async () => {
+    if (!newSupplier.nama.trim()) {
+      showToast('❌ Nama supplier wajib diisi.');
+      return;
+    }
+    if (editingSupplier) {
+      await updateSupplier({ ...editingSupplier, nama: newSupplier.nama, kontak: newSupplier.kontak, alamat: newSupplier.alamat, email: newSupplier.email, catatan: newSupplier.catatan });
+      setEditingSupplier(null);
+    } else {
+      await addSupplier({ ...newSupplier, id: `SUP-${Date.now()}`, aktif: true });
+    }
+    setNewSupplier({ nama: '', kontak: '', alamat: '', email: '', catatan: '' });
+  };
+
+  const handleDeleteSupplier = (id: string | number) => {
+    if (window.confirm('Yakin menghapus supplier ini?')) {
+      void deleteSupplier(id);
+    }
   };
 
   return (
@@ -1672,12 +1828,12 @@ export const AdminModal: React.FC = () => {
                           className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-[#135A62]"
                         />
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             if (!newRestrictedPassword.trim()) return;
                             const current = siteSettings.restrictedPasswords || [];
-                            updateSiteSettings({ restrictedPasswords: [...current, newRestrictedPassword.trim()] });
+                            updateSiteSettings({ restrictedPasswords: [...current, await sha256Hash(newRestrictedPassword.trim())] });
                             setNewRestrictedPassword('');
-                            showToast('✅ Password akses terbatas ditambahkan.');
+                            showToast('✅ Password akses terbatas ditambahkan (hash SHA-256).');
                           }}
                           className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl text-xs transition-colors"
                         >
@@ -2179,28 +2335,550 @@ export const AdminModal: React.FC = () => {
               )}
 
               {/* NEW TABS from DigitalCulinary / GalanganShop integration */}
+              {/* TAB 10: Transaksi Penjualan */}
               {adminTab === 'transaksi' && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
-                  <h4 className="text-lg font-black text-slate-900">Transaksi Penjualan</h4>
-                  <p className="text-xs text-slate-500 mt-1">Fitur integrasi transaksi penjualan dari DigitalCulinary.</p>
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150 space-y-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-[#135A62]" />
+                        <span>Transaksi Penjualan</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Catat transaksi penjualan, atur metode pembayaran, dan kelola status order secara real-time.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        laporanRingkasan.totalTransaksi > 0
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-slate-50 text-slate-500 border-slate-200'
+                      }`}>
+                      {laporanRingkasan.totalTransaksi} Transaksi
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Form Tambah Transaksi */}
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
+                    <h5 className="font-bold text-slate-800 text-sm">Tambah Transaksi Baru</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Produk</label>
+                        <select
+                          value={String(newOrderProductId)}
+                          onChange={(e) => setNewOrderProductId(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        >
+                          <option value="">-- Pilih Produk --</option>
+                          {products.map((p) => (
+                            <option key={String(p.id)} value={String(p.id)}>
+                              {p.nama} ({p.merk || '-'} · {formatRupiah(p.harga)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5 w-full">Qty</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={newOrderQty}
+                          onChange={(e) => setNewOrderQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div className="flex items-end col-span-1 sm:col-span-1 lg:col-span-1">
+                        <button
+                          onClick={handleAddOrderItem}
+                          className="w-full py-2 bg-[#135A62] hover:bg-[#0e444a] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Item</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Pelanggan</label>
+                        <input
+                          type="text"
+                          value={newOrderCustomer}
+                          onChange={(e) => setNewOrderCustomer(e.target.value)}
+                          placeholder="Nama pelanggan (opsional)"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Metode Pembayaran</label>
+                        <select
+                          value={newOrderMetode}
+                          onChange={(e) => setNewOrderMetode(e.target.value as TransaksiMetode)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        >
+                          <option value="tunai">Tunai</option>
+                          <option value="qris">QRIS</option>
+                          <option value="transfer">Transfer Bank</option>
+                          <option value="e-wallet">E-Wallet</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-bold">
+                          <tr>
+                            <th className="p-2">Produk</th>
+                            <th className="p-2 text-right">Harga</th>
+                            <th className="p-2 text-center">Qty</th>
+                            <th className="p-2 text-right">Subtotal</th>
+                            <th className="p-2">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orderItems.map((item) => (
+                            <tr key={String(item.productId)} className="border-t border-slate-100">
+                              <td className="p-2 font-medium">{item.nama}</td>
+                              <td className="p-2 text-right font-mono">{formatRupiah(item.harga)}</td>
+                              <td className="p-2 text-center">{item.jumlah}</td>
+                              <td className="p-2 text-right font-bold">{formatRupiah(item.subtotal)}</td>
+                              <td className="p-2">
+                                <button
+                                  onClick={() => handleRemoveOrderItem(item.productId)}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {orderItems.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="p-4 text-center text-slate-400 text-[10px]">Belum ada item ditambahkan.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                      <span className="font-bold text-slate-900">Total:</span>
+                      <span className="text-lg font-black text-[#135A62]">{orderTotal > 0 ? formatRupiah(orderTotal) : 'Rp 0'}</span>
+                      <button
+                        onClick={handleSaveOrder}
+                        disabled={orderItems.length === 0}
+                        className="px-4 py-2 bg-[#135A62] hover:bg-[#0e444a] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Simpan Transaksi</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Daftar Transaksi */}
+                  <div className="space-y-3">
+                    <h5 className="font-bold text-slate-800 text-sm">Daftar Transaksi ({orders.length})</h5>
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                          <tr>
+                            <th className="p-3">ID Transaksi</th>
+                            <th className="p-3">Tanggal</th>
+                            <th className="p-3">Pelanggan</th>
+                            <th className="p-3 text-right">Total</th>
+                            <th className="p-3">Metode</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {orders.slice().reverse().slice(0, 50).map((o) => (
+                            <tr key={o.id} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-mono text-[10px]">{o.id}</td>
+                              <td className="p-2.5 text-[10px]">{new Date(o.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                              <td className="p-2.5 text-slate-600 text-[10px]">{o.pelanggan || '-'}</td>
+                              <td className="p-2.5 text-right font-medium text-[#135A62]">{formatRupiah(o.total)}</td>
+                              <td className="p-2.5 text-[10px]">{o.metode}</td>
+                              <td className="p-2.5">
+                                <select
+                                  value={o.status}
+                                  onChange={(e) => void updateOrderStatus(o.id, e.target.value as TransaksiStatus)}
+                                  className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-[#135A62]"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="selesai">Selesai</option>
+                                  <option value="batal">Batal</option>
+                                </select>
+                              </td>
+                              <td className="p-2.5 text-right">
+                                <button
+                                  onClick={() => { if (window.confirm(`Hapus transaksi ${o.id}?`)) void deleteOrder(o.id); }}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {orders.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-4 text-center text-slate-400 text-[10px]">Belum ada transaksi.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* TAB 11: Inventory */}
               {adminTab === 'inventory' && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
-                  <h4 className="text-lg font-black text-slate-900">Manajemen Inventory</h4>
-                  <p className="text-xs text-slate-500 mt-1">Fitur manajemen stok dan inventory dari DigitalCulinary.</p>
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150 space-y-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <Database className="w-5 h-5 text-[#135A62]" />
+                        <span>Manajemen Inventory & Stok</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Catat stok masuk, keluar, opname, dan retur. Perubahan stok dicerminkan otomatis pada katalog produk.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Form Tambah Log Inventory */}
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
+                    <h5 className="font-bold text-slate-800 text-sm">Catat Perubahan Stok</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Produk</label>
+                        <select
+                          value={String(invLogProductId)}
+                          onChange={(e) => setInvLogProductId(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        >
+                          <option value="">-- Pilih Produk --</option>
+                          {products.map((p) => (
+                            <option key={String(p.id)} value={String(p.id)}>
+                              {p.nama} — Stok Saat Ini: {p.jumlah_stok}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Tipe</label>
+                        <select
+                          value={invLogTipe}
+                          onChange={(e) => setInvLogTipe(e.target.value as 'masuk' | 'keluar' | 'opname' | 'retur')}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        >
+                          <option value="masuk">Masuk</option>
+                          <option value="keluar">Keluar</option>
+                          <option value="opname">Opname</option>
+                          <option value="retur">Retur</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Jumlah</label>
+                        <input
+                          type="number"
+                          value={invLogJumlah}
+                          onChange={(e) => setInvLogJumlah(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          onClick={handleAddInventoryLog}
+                          className="w-full py-2 bg-[#135A62] hover:bg-[#0e444a] text-white text-xs font-bold rounded-xl transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Catat</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Opname akan mengganti stok saat ini dengan jumlah yang diinput. Keluar akan mengurangi stok (minimal 0).
+                    </div>
+                  </div>
+
+                  {/* Daftar Log Inventory */}
+                  <div className="space-y-3">
+                    <h5 className="font-bold text-slate-800 text-sm">Riwayat Inventory ({inventoryLogs.length})</h5>
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                          <tr>
+                            <th className="p-3">ID</th>
+                            <th className="p-3">Produk</th>
+                            <th className="p-3">Tipe</th>
+                            <th className="p-3 text-right">Jumlah</th>
+                            <th className="p-3 text-right">Stok Sebelum</th>
+                            <th className="p-3 text-right">Stok Sesudah</th>
+                            <th className="p-3">Tanggal</th>
+                            <th className="p-3 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {inventoryLogs.slice().reverse().slice(0, 50).map((l) => (
+                            <tr key={l.id} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-mono text-[10px]">{l.id}</td>
+                              <td className="p-2.5 text-slate-600 text-[10px]">{l.namaProduk}</td>
+                              <td className="p-2.5 text-[10px]">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  l.tipe === 'masuk' ? 'bg-emerald-50 text-emerald-700' :
+                                  l.tipe === 'keluar' ? 'bg-amber-50 text-amber-700' :
+                                  l.tipe === 'opname' ? 'bg-sky-50 text-sky-700' :
+                                  'bg-rose-50 text-rose-700'
+                                }`}>{l.tipe.toUpperCase()}</span>
+                              </td>
+                              <td className="p-2.5 text-right text-[10px]">{l.jumlah}</td>
+                              <td className="p-2.5 text-right text-[10px]">{l.stokSebelum}</td>
+                              <td className="p-2.5 text-right text-[10px] font-medium">{l.stokSesudah}</td>
+                              <td className="p-2.5 text-[10px]">{new Date(l.tanggal).toLocaleDateString('id-ID')}</td>
+                              <td className="p-2.5 text-right">
+                                <button
+                                  onClick={() => { if (window.confirm('Hapus log inventory?')) void deleteInventoryLog(l.id); }}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {inventoryLogs.length === 0 && (
+                            <tr>
+                              <td colSpan={8} className="p-4 text-center text-slate-400 text-[10px]">Belum ada log inventory.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* TAB 12: Laporan */}
               {adminTab === 'laporan' && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
-                  <h4 className="text-lg font-black text-slate-900">Laporan Penjualan</h4>
-                  <p className="text-xs text-slate-500 mt-1">Fitur laporan penjualan dan analitik dari DigitalCulinary.</p>
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150 space-y-8">
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <FileSpreadsheet className="w-5 h-5 text-[#135A62]" />
+                      <span>Laporan Penjualan & Analitik</span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Ringkasan kinerja penjualan dihitung secara reaktif dari data transaksi Firestore.
+                    </p>
+                  </div>
+
+                  {/* Ringkasan Kartu */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Total Transaksi</div>
+                      <div className="text-2xl font-black text-slate-900">{laporanRingkasan.totalTransaksi}</div>
+                    </div>
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                      <div className="text-[10px] uppercase tracking-wider text-emerald-700 font-bold mb-2">Total Pendapatan</div>
+                      <div className="text-2xl font-black text-emerald-900">{laporanRingkasan.totalPendapatan > 0 ? formatRupiah(laporanRingkasan.totalPendapatan) : 'Rp 0'}</div>
+                    </div>
+                    <div className="p-4 bg-sky-50 border border-sky-200 rounded-2xl">
+                      <div className="text-[10px] uppercase tracking-wider text-sky-700 font-bold mb-2">Seluruh Transaksi</div>
+                      <div className="text-2xl font-black text-sky-900">{laporanRingkasan.totalSeluruhTransaksi > 0 ? formatRupiah(laporanRingkasan.totalSeluruhTransaksi) : 'Rp 0'}</div>
+                    </div>
+                    <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Produk Terlaris</div>
+                      <div className="text-sm font-black text-slate-900 truncate max-w-xs">
+                        {laporanRingkasan.produkTerlaris[0]?.nama || '-'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Grafik Harian (tabel sederhana) */}
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                        <tr>
+                          <th className="p-3">Tanggal</th>
+                          <th className="p-3 text-right">Jumlah Transaksi</th>
+                          <th className="p-3 text-right">Pendapatan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {laporanRingkasan.harian.slice().reverse().slice(0, 10).map((h) => (
+                          <tr key={h.tanggal}>
+                            <td className="p-2.5">{h.tanggal}</td>
+                            <td className="p-2.5 text-right">{h.jumlahTransaksi}</td>
+                            <td className="p-2.5 text-right font-medium">{formatRupiah(h.totalPendapatan)}</td>
+                          </tr>
+                        ))}
+                        {laporanRingkasan.harian.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="p-4 text-center text-slate-400 text-[10px]">Belum ada data harian.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Produk Terlaris */}
+                  <div className="space-y-3">
+                    <h5 className="font-bold text-slate-800 text-sm">Produk Terlaris</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {laporanRingkasan.produkTerlaris.map((p) => (
+                        <div key={p.nama} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                          <div className="text-[10px] font-semibold text-slate-600 truncate">{p.nama}</div>
+                          <div className="text-2xl font-black text-slate-900 mt-1">{p.terjual} terjual</div>
+                          <div className="text-xs text-[#135A62] font-bold mt-1">{formatRupiah(p.pendapatan)}</div>
+                        </div>
+                      ))}
+                      {laporanRingkasan.produkTerlaris.length === 0 && (
+                        <div className="col-span-full p-8 text-center text-slate-400 text-[10px]">Belum ada data produk terlaris.</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* TAB 13: Supplier */}
               {adminTab === 'supplier' && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150">
-                  <h4 className="text-lg font-black text-slate-900">Manajemen Supplier</h4>
-                  <p className="text-xs text-slate-500 mt-1">Fitur pengelolaan supplier dan vendor dari DigitalCulinary.</p>
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs animate-in fade-in duration-150 space-y-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-[#135A62]" />
+                        <span>Manajemen Supplier & Vendor</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Kelola daftar supplier, kontak, dan catatan vendor untuk keperluan pengadaan dan restok.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        suppliers.filter(s => s.aktif).length > 0
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-slate-50 text-slate-500 border-slate-200'
+                      }`}>
+                      {suppliers.filter(s => s.aktif).length} Aktif
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Form Tambah / Edit Supplier */}
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
+                    <h5 className="font-bold text-slate-800 text-sm">
+                      {editingSupplier ? `Edit Supplier` : 'Tambah Supplier Baru'}
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Nama Supplier *</label>
+                        <input
+                          type="text"
+                          value={newSupplier.nama}
+                          onChange={(e) => setNewSupplier({ ...newSupplier, nama: e.target.value })}
+                          placeholder="Contoh: CV. Teknik Jaya"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Kontak / Telepon</label>
+                        <input
+                          type="text"
+                          value={newSupplier.kontak}
+                          onChange={(e) => setNewSupplier({ ...newSupplier, kontak: e.target.value })}
+                          placeholder="0812-3456-7890"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Alamat</label>
+                        <input
+                          type="text"
+                          value={newSupplier.alamat}
+                          onChange={(e) => setNewSupplier({ ...newSupplier, alamat: e.target.value })}
+                          placeholder="Alamat lengkap supplier"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Email</label>
+                        <input
+                          type="email"
+                          value={newSupplier.email}
+                          onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })}
+                          placeholder="supplier@example.com"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-1.5">Catatan</label>
+                        <input
+                          type="text"
+                          value={newSupplier.catatan}
+                          onChange={(e) => setNewSupplier({ ...newSupplier, catatan: e.target.value })}
+                          placeholder="Catatan khusus supplier (opsional)"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#135A62]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end pt-2">
+                      {editingSupplier ? (
+                        <button
+                          onClick={() => { setEditingSupplier(null); setNewSupplier({ nama: '', kontak: '', alamat: '', email: '', catatan: '' }); }}
+                          className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                        >
+                          Batal Edit
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={handleSaveSupplier}
+                        className="px-4 py-2 bg-[#135A62] hover:bg-[#0e444a] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{editingSupplier ? 'Perbarui' : 'Simpan'} Supplier</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Daftar Supplier */}
+                  <div className="space-y-3">
+                    <h5 className="font-bold text-slate-800 text-sm">Daftar Supplier ({suppliers.length})</h5>
+                    <div className="space-y-2">
+                      {suppliers.map((s) => (
+                        <div key={s.id} className="p-3.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="font-medium text-slate-900 text-sm truncate">{s.nama}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                              s.aktif ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                            {s.aktif ? 'Aktif' : 'Nonaktif'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 text-[10px]">
+                            <span className="text-slate-500 truncate max-w-xs">{s.kontak || '-'}</span>
+                            <span className="text-slate-500 truncate max-w-xs">{s.email || '-'}</span>
+                            <button
+                              onClick={() => handleEditSupplier(s)}
+                              className="p-1.5 text-slate-600 hover:text-[#135A62] hover:bg-slate-100 rounded-lg"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSupplier(s.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {suppliers.length === 0 && (
+                        <div className="p-8 text-center text-slate-400 text-[10px]">Belum ada supplier.</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

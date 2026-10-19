@@ -94,6 +94,79 @@ export interface SiteSettings {
   footerBottomText?: string; // Dioptimalkan untuk...
   popularCategories?: string[];
   footerCopyright: string;
-  adminPasswordHash: string; // default "Dear2226"
-  restrictedPasswords?: string[];
+  adminPasswordHash: string; // default "Dear2226" (disimpan sebagai hash SHA-256)
+  restrictedPasswords?: string[]; // disimpan sebagai hash SHA-256
+};
+
+/* ================================================================
+   Master Admin — Transaksi, Inventory, Laporan & Supplier
+   (integrasi fitur DigitalCulinary ke SST Catalog, lihat implementation_plan.md)
+   ================================================================ */
+
+export interface TransaksiItem {
+  productId: string | number;
+  nama: string;
+  merk?: string;
+  harga: number;
+  jumlah: number;
+  subtotal: number;
+}
+
+export type TransaksiStatus = 'pending' | 'selesai' | 'batal';
+export type TransaksiMetode = 'tunai' | 'qris' | 'transfer' | 'e-wallet';
+
+export interface Transaksi {
+  id: string; // TRX-...
+  tanggal: string; // ISO string
+  pelanggan?: string;
+  items: TransaksiItem[];
+  total: number;
+  metode: TransaksiMetode;
+  status: TransaksiStatus;
+  catatan?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryLog {
+  id: string; // INV-...
+  productId: string | number;
+  namaProduk: string;
+  tipe: 'masuk' | 'keluar' | 'opname' | 'retur';
+  jumlah: number;
+  stokSebelum: number;
+  stokSesudah: number;
+  tanggal: string;
+  catatan?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Supplier {
+  id: string; // SUP-...
+  nama: string;
+  kontak?: string;
+  alamat?: string;
+  email?: string;
+  catatan?: string;
+  aktif: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LaporanHarian {
+  tanggal: string;
+  jumlahTransaksi: number;
+  totalPendapatan: number;
+}
+
+export interface LaporanRingkasan {
+  totalTransaksi: number;
+  totalPendapatan: number;
+  totalSeluruhTransaksi: number;
+  perStatus: Record<TransaksiStatus, number>;
+  produkTerlaris: Array<{ nama: string; terjual: number; pendapatan: number }>;
+  harian: LaporanHarian[];
 }

@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, setLogLevel, Firestore } from 'firebase/firestore';
-import fallbackConfig from '../../firebase-applet-config.json';
 
 // ==========================================
 // KONFIGURASI BARU: Project galanganshop
